@@ -1,0 +1,9 @@
+# Features to use
+
+## Runoffs
+
+We measure the growth of algae, and aquatic deadzones (Eutrophication), that are downstream from rivers. 
+Algae bloom happens for many reasons, but it could be a pointer to overfertilized farms by following the river upstream.
+
+Features:
+- Normalized Difference Chlorophyll Index (NDCI)
