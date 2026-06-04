@@ -1,0 +1,14 @@
+# Notes for Camilla meeting
+
+- Dynamic tool that lets end users query specific areas.
+- Track and understand.
+- LRF org advising farmers.
+- Educational tool use.
+- Consequences of different crop types binding soil.
+- Connect to weather, runoff, precipitation?
+- Tool for what you can see on the ground.
+- Transparent and connect figures.
+- Source of data transparency.
+- LPIS database.
+- national land coverage database (overlay instead of vector)
+

@@ -1,0 +1,2 @@
+# Project dependencies from /opt/anaconda3/envs/digital-earth
+openeo==0.50.0
