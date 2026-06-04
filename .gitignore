@@ -20,6 +20,7 @@ ENV/
 .coverage.*
 coverage.xml
 htmlcov/
+outputs/
 
 # Build artifacts
 build/
