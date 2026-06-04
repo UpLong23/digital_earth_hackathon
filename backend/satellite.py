@@ -84,16 +84,21 @@ def _wait_for_job(job, label, output_path, progress_callback,
                 progress_callback(pct_end, f"{label} done")
             return
         else:
+            logs = []
+            try:
+                logs = job.logs()
+            except Exception:
+                pass
+            details = "; ".join(str(l) for l in logs[:5]) if logs else status
             raise RuntimeError(
-                f"openEO job {label} failed with status {status}: {job.status()}"
+                f"openEO job '{label}' failed: {details}"
             )
 
 
 def _make_s2_process(conn, bbox, start, end):
-    """Build the openEO process for S2 composite at 20 m — NDVI + NDRE only.
+    """Build the openEO process for S2 composite at 20 m — NDVI + NDRE.
 
-    Extra indices (NDTI, BSI, NDMI) were removed because they were unused
-    in the final risk model.  S2 NDVI/NDRE are used directly for n-uptake risk and anomaly.
+    SRRE (B08/B05) is derived locally from NDRE: SRRE = (1 + NDRE) / (1 - NDRE).
     """
     from openeo.processes import mean as openeo_mean
 
@@ -220,21 +225,29 @@ def compute_zonal_stats(parcels: list, s2_path: str,
 
             try:
                 out, _ = mask(src_s2, [geom], crop=True, all_touched=True)
-                for j, key in enumerate(["ndvi", "ndre"]):
+                total_px = out.shape[1] * out.shape[2]
+                s2_bands = list(arrs.keys())
+                for j, key in enumerate(s2_bands):
                     vals = out[j][~np.isnan(out[j])]
                     if len(vals) > 0:
                         row[key] = float(vals.mean())
                         row[f"{key}_std"] = float(vals.std())
-                        row[f"{key}_count"] = int(len(vals))
+                        row[f"{key}_data_frac"] = len(vals) / max(total_px, 1)
                     else:
                         row[key] = None
                         row[f"{key}_std"] = None
-                        row[f"{key}_count"] = 0
+                        row[f"{key}_data_frac"] = 0.0
+                # SRRE derived from NDRE: SRRE = (1 + NDRE) / (1 - NDRE)
+                ndre_val = row.get("ndre")
+                if ndre_val is not None and abs(ndre_val) < 0.99:
+                    row["srre"] = (1 + ndre_val) / (1 - ndre_val)
+                else:
+                    row["srre"] = None
             except Exception:
-                for key in ["ndvi", "ndre"]:
+                for key in list(arrs.keys()) + ["srre"]:
                     row[key] = None
                     row[f"{key}_std"] = None
-                    row[f"{key}_count"] = 0
+                    row[f"{key}_data_frac"] = 0.0
 
             try:
                 out, _ = mask(src_slp, [geom], crop=True, all_touched=True)

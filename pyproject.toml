@@ -23,4 +23,5 @@ dependencies = [
     "netcdf4>=1.7.4",
     "owslib>=0.36.0",
     "openpyxl>=3.1.5",
+    "matplotlib>=3.10.9",
 ]

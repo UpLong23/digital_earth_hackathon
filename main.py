@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 from config import CROP_N_DEMAND, DEFAULT_LAT, DEFAULT_LON, DEFAULT_BUFFER_DEG
 from backend.parcels import load_parcels, filter_parcels
 from backend.risk import risk_label
@@ -8,7 +9,7 @@ from components.sidebar import render_sidebar
 from components.map import render_risk_map
 from components.timeseries import render_ndvi_timeseries
 
-MAX_MAP_PARCELS = 2000
+MAX_MAP_PARCELS = 2000                                                                                          # TODO
 
 st.set_page_config(page_title="Gödslingskollen", page_icon="🌾", layout="wide")
 
@@ -157,10 +158,10 @@ else:
             s_end = dt_date.fromisoformat(sidebar_filters["end_date"])
             total_days = (s_end - s_start).days
             if total_days > 90:
-                est = total_days // 3
+                # est = total_days // 3
                 st.info(
                     f"Date range is {total_days} days. "
-                    f"Estimated fetch time is ~{est} min. "
+                    # f"Estimated fetch time is ~{est} min. "
                     "The progress bar below will show real-time status."
                 )
 
@@ -238,65 +239,93 @@ else:
     map_parcels = visible_parcels
     map_risks = visible_risks
 
-col_map, col_stats = st.columns([3, 1], gap="medium")
-
-with col_stats:
-    st.subheader("Summary")
-    try:
-        scores = [r["risk_score"] for r in visible_risks]
-        avg_risk = sum(scores) / len(scores)
-        high = sum(1 for s in scores if s >= 60)
-        critical = sum(1 for s in scores if s >= 80)
-        low = sum(1 for s in scores if s < 30)
-
-        st.metric("Average Risk", f"{avg_risk:.0f}/100")
-        st.metric("Critical", critical, delta_color="inverse")
-        st.metric("High risk", high, delta_color="inverse")
-        st.metric("Low risk", low)
-
-        st.divider()
-        st.subheader("Top Risks")
-        sorted_data = sorted(zip(visible_risks, visible_parcels),
-                             key=lambda x: x[0]["risk_score"], reverse=True)[:5]
-        for r, p in sorted_data:
-            lbl, clr = risk_label(r["risk_score"])
-            st.markdown(
-                f"<span style='display:inline-block;width:8px;height:8px;"
-                f"background:{clr};border-radius:50%;'></span> "
-                f"**{p['id']}** ({p['crop']}) — {r['risk_score']:.0f}/100 ({lbl})",
-                unsafe_allow_html=True,
-            )
-
-        st.divider()
-        st.subheader("Crop Distribution")
-        for crop, count in pd.Series([p["crop"] for p in visible_parcels]).value_counts().items():
-            st.markdown(f"- {crop}: {count}")
-    except Exception as e:
-        st.error(f"Summary error: {e}")
-
-with col_map:
-    st.subheader("Risk Map")
-    st.caption("Color-coded by overfertilization risk. Click for details.")
-    try:
-        render_risk_map(
-            map_parcels, map_risks,
-            center_lat=muni_center_lat, center_lon=muni_center_lon,
-            municipality=selected_muni if is_muni_mode else None,
-        )
-    except Exception as e:
-        st.error(f"Map error: {e}")
+st.subheader("🗺️ Risk Map")
+st.caption("Color-coded by overfertilization risk. Click for details.")
+try:
+    render_risk_map(
+        map_parcels, map_risks,
+        center_lat=muni_center_lat, center_lon=muni_center_lon,
+        municipality=selected_muni if is_muni_mode else None,
+    )
+except Exception as e:
+    st.error(f"Map error: {e}")
 
 st.divider()
-st.subheader("NDVI Time Series & Risk Comparison")
+
+# ── Summary cards row ─────────────────────────────────────────────
+try:
+    scores = [r["risk_score"] for r in visible_risks]
+    avg_risk = sum(scores) / len(scores)
+    high = sum(1 for s in scores if s >= 60)
+    critical = sum(1 for s in scores if s >= 80)
+    moderate = sum(1 for s in scores if 30 <= s < 60)
+    low = sum(1 for s in scores if s < 30)
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        st.metric("Average Risk", f"{avg_risk:.0f}/100")
+    with c2:
+        st.metric("Critical", critical)
+    with c3:
+        st.metric("High Risk", high)
+    with c4:
+        st.metric("Moderate", moderate)
+    with c5:
+        st.metric("Low Risk", low)
+except Exception as e:
+    st.error(f"Summary error: {e}")
+
+# ── Top risks + Crop distribution side by side ────────────────────
+col_left, col_right = st.columns(2)
+with col_left:
+    st.subheader("🔴 Top 5 Highest Risk Parcels")
+    sorted_data = sorted(zip(visible_risks, visible_parcels),
+                         key=lambda x: x[0]["risk_score"], reverse=True)[:5]
+    for r, p in sorted_data:
+        lbl, clr = risk_label(r["risk_score"])
+        st.markdown(
+            f"<span style='display:inline-block;width:10px;height:10px;"
+            f"background:{clr};border-radius:50%;'></span> "
+            f"**{p['id']}** ({p['crop']}, {p['area_ha']:.1f} ha) — **{r['risk_score']:.0f}/100** ({lbl})",
+            unsafe_allow_html=True,
+        )
+
+with col_right:
+    st.subheader("🌾 Crop Distribution")
+    crop_counts = pd.Series([p["crop"] for p in visible_parcels]).value_counts()
+    fig_crop = go.Figure(go.Bar(
+        x=crop_counts.values,
+        y=crop_counts.index,
+        orientation="h",
+        marker_color="#60a5fa",
+        text=crop_counts.values,
+        textposition="outside",
+    ))
+    fig_crop.update_layout(
+        height=250,
+        margin={"l": 10, "r": 40, "t": 10, "b": 10},
+        paper_bgcolor="#0e1117",
+        plot_bgcolor="#0e1117",
+        font={"color": "#e2e8f0"},
+        xaxis={"title": "Parcels", "color": "#94a3b8", "gridcolor": "#334155"},
+        yaxis={"color": "#94a3b8", "gridcolor": "#334155"},
+        hovermode="y unified",
+    )
+    st.plotly_chart(fig_crop, use_container_width=True)
+
+st.divider()
+st.subheader("📈 NDVI & SRRE Time Series")
+st.caption("Highest-risk parcel (reddest line), lowest-risk parcel, and random samples in between.")
 n_lines = st.slider("Parcel lines to show", 1, 10, 10,
                      help="Shows highest- and lowest-risk parcels plus random samples from the middle.")
 try:
-    render_ndvi_timeseries(dd["timeseries"], all_parcels, dd["risks"], n_lines=n_lines)
+    render_ndvi_timeseries(dd["timeseries"], dd.get("timeseries_srre", dd["timeseries"]), all_parcels, dd["risks"], n_lines=n_lines)
 except Exception as e:
     st.error(f"Chart error: {e}")
 
 with st.expander("📋 Full Parcel Data Table", expanded=False):
     try:
+        srre_values = dd.get("srre", [None] * len(all_parcels))
         rows = []
         for i, p in enumerate(all_parcels):
             r = dd["risks"][i]
@@ -305,7 +334,7 @@ with st.expander("📋 Full Parcel Data Table", expanded=False):
                 "Parcel": p["id"], "Crop": p["crop"],
                 "Area (ha)": p["area_ha"],
                 "NDVI": r["ndvi"], "NDRE": r["ndre"],
-                "Vigor": r.get("vigor_score"),
+                "SRRE": srre_values[i] if i < len(srre_values) else None,
                 "Heterog.": r.get("heterogeneity_score"),
                 "Runoff": r.get("runoff_score"),
                 "Conf.": r.get("confidence"),
@@ -321,7 +350,7 @@ with st.expander("📋 Full Parcel Data Table", expanded=False):
 
 st.divider()
 for text in [
-    "🛰️ **Sentinel-2** — NDVI & NDRE for crop health & anomaly",
+    "🛰️ **Sentinel-2** — NDVI, NDRE & SRRE for crop health & anomaly",
     "⛰️ **EU-DTM** — Slope analysis for runoff potential",
     "🗺️ **LPIS** — Parcel registry from Swedish Board of Agriculture",
 ]:

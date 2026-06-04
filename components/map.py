@@ -38,7 +38,7 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
         coords = p["geometry"]["coordinates"][0]
         polygon_coords = [(c[1], c[0]) for c in coords]
 
-        vigor = r.get("vigor_score", 0)
+        vigor_z = r.get("vigor_z", 0)
         het = r.get("heterogeneity_score", 0)
         conf = r.get("confidence", 0)
 
@@ -55,7 +55,7 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
                 f"<b>Risk:</b> {r['risk_score']}/100 &mdash; {label}<br>"
                 f"<b>NDVI:</b> {r['ndvi']}<br>"
                 f"<b>NDRE:</b> {r['ndre']}<br>"
-                f"<b>Vigor:</b> {vigor:.0f}/100 &nbsp;|&nbsp; <b>Heterog.:</b> {het:.0f}/100<br>"
+                f"<b>Vigor Z:</b> {vigor_z:.1f} &nbsp;|&nbsp; <b>Heterog.:</b> {het:.0f}/100<br>"
                 f"<span style='font-size:0.8em;color:#94a3b8;'>Confidence: {conf:.0%}</span>"
                 f"</div>",
                 max_width=300,

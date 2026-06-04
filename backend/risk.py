@@ -1,4 +1,3 @@
-from config import RISK_WEIGHTS
 import statistics
 
 
@@ -14,7 +13,7 @@ def compute_peer_baselines(parcels, ndvi_values, ndvi_std_values=None):
             continue
         crop = p.get("crop", "Unknown")
         groups.setdefault(crop, []).append(ndvi)
-
+        
     baselines = {}
     for crop, vals in groups.items():
         if len(vals) < 3:
@@ -29,7 +28,7 @@ def compute_peer_baselines(parcels, ndvi_values, ndvi_std_values=None):
 
 def compute_risk_scores(parcels, ndvi_values=None, ndre_values=None,
                          slope_values=None,
-                         ndvi_std_values=None, ndvi_count_values=None,
+                         ndvi_std_values=None, ndvi_data_frac_values=None,
                          peer_baselines=None):
     """Multi-component risk scoring.
 
@@ -38,7 +37,7 @@ def compute_risk_scores(parcels, ndvi_values=None, ndre_values=None,
       - Within-field heterogeneity (ndvi_std)
       - Red-edge anomaly (NDRE deviation from crop median)
       - Runoff (slope)
-      - Confidence (based on valid pixel count)
+      - Confidence (based on valid pixel fraction)
     """
     if peer_baselines is None:
         peer_baselines = {}
@@ -49,18 +48,18 @@ def compute_risk_scores(parcels, ndvi_values=None, ndre_values=None,
         ndre = float(ndre_values[i]) if ndre_values and ndre_values[i] is not None else None
         slope = float(slope_values[i]) if slope_values and slope_values[i] is not None else 0.0
         ndvi_std = float(ndvi_std_values[i]) if ndvi_std_values and ndvi_std_values[i] is not None else None
-        ndvi_count = int(ndvi_count_values[i]) if ndvi_count_values and ndvi_count_values[i] is not None else 0
+        ndvi_data_frac = float(ndvi_data_frac_values[i]) if ndvi_data_frac_values and ndvi_data_frac_values[i] is not None else 0.0
 
         crop = p.get("crop", "Unknown")
         bl = peer_baselines.get(crop, {})
 
-        # ── Component 1: Optical vigor anomaly (peer-relative) ──────
+        # ── Component 1: Peer-relative z-score ──────────────────────
         if ndvi is not None and bl.get("median") is not None and bl["n"] >= 3:
-            z = (ndvi - bl["median"]) / bl["mad"]
-            # Positive z = higher-than-peers (possible overfertilization)
-            vigor_score = min(100.0, max(0.0, z * 25.0))
+            vigor_z = (ndvi - bl["median"]) / bl["mad"]
         else:
-            vigor_score = 0.0
+            vigor_z = 0.0
+        # Scale z to 0-100 for the risk formula (z=0→0, z=4→100)
+        vigor_contrib = max(0.0, vigor_z / 4.0 * 100.0)
 
         # ── Component 2: Within-field heterogeneity ─────────────────
         ndvi_std_score = 0.0
@@ -77,36 +76,18 @@ def compute_risk_scores(parcels, ndvi_values=None, ndre_values=None,
         # ── Component 4: Runoff ─────────────────────────────────────
         runoff_score = _runoff_risk(slope)
 
-        # ── Confidence ──────────────────────────────────────────────
-        confidence = min(1.0, ndvi_count / 50.0) if ndvi_count > 0 else 0.0
+        # ── Confidence: fraction of valid pixels within parcel mask ─
+        confidence = ndvi_data_frac
 
-        # ── Weighted total ─────────────────────────────────────────
-        total = (
-            RISK_WEIGHTS["n_uptake"] * vigor_score
-            + RISK_WEIGHTS["runoff"] * runoff_score
-            + RISK_WEIGHTS["anomaly"] * (ndvi_std_score * 0.5 + ndre_diff * 0.3 + vigor_score * 0.2)
-        )
-
-        # If above peers + heterogeneous + high NDRE ratio → synergy boost
-        n_high = 0
-        if vigor_score > 50:
-            n_high += 1
-        if runoff_score > 40:
-            n_high += 1
-        if ndvi_std_score > 50:
-            n_high += 1
-        if ndre_diff > 50:
-            n_high += 1
-        if n_high >= 2:
-            total *= (1.0 + 0.10 * n_high)
-
+        # ── Equal-weighted average ─────────────────────────────────
+        total = (vigor_contrib + ndvi_std_score + ndre_diff + runoff_score) / 4.0
         total = max(0.0, min(100.0, total))
 
         results.append({
             "parcel_id": str(p["id"]),
             "crop": crop,
             "risk_score": float(round(total, 1)),
-            "vigor_score": float(round(vigor_score, 1)),
+            "vigor_z": float(round(vigor_z, 2)),
             "runoff_score": float(round(runoff_score, 1)),
             "heterogeneity_score": float(round(ndvi_std_score, 1)),
             "ndre_anomaly": float(round(ndre_diff, 1)),

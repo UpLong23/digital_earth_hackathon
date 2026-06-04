@@ -46,6 +46,16 @@ def generate_demo_slope(parcels):
     return [round(float(_rng.uniform(0.3, 5.5)), 1) for _ in parcels]
 
 
+def generate_srre_timeseries(parcels, n_steps=12):
+    dates = pd.date_range(end=datetime.today(), periods=n_steps, freq="14D")
+    ts_data = {}
+    ndvi_ts = generate_ndvi_timeseries(parcels, n_steps)
+    for pid in ndvi_ts.columns:
+        ndre = ndvi_ts[pid] * 0.75
+        ts_data[pid] = np.where(np.abs(ndre) < 0.99, (1 + ndre) / (1 - ndre), 3.0)
+    return pd.DataFrame(ts_data, index=dates)
+
+
 def generate_ndvi_timeseries(parcels, n_steps=12):
     dates = pd.date_range(end=datetime.today(), periods=n_steps, freq="14D")
     ts_data = {}
@@ -67,25 +77,29 @@ def build_demo_data(parcels=None, lat=None, lon=None):
         _rng = np.random.default_rng(seed)
     ndvi = generate_demo_ndvi(parcels)
     ndre = generate_demo_ndre(parcels)
+    srre = [(1 + v) / (1 - v) if abs(v) < 0.99 else 3.0 for v in ndre]
     slope = generate_demo_slope(parcels)
     ndvi_std = [round(float(_rng.uniform(0.02, 0.12)), 3) for _ in parcels]
-    ndvi_count = [int(_rng.uniform(10, 80)) for _ in parcels]
+    ndvi_data_frac = [round(float(_rng.uniform(0.3, 0.98)), 2) for _ in parcels]
 
     peer_bl = compute_peer_baselines(parcels, ndvi)
 
     risks = compute_risk_scores(
         parcels, ndvi, ndre, slope,
         ndvi_std_values=ndvi_std,
-        ndvi_count_values=ndvi_count,
+        ndvi_data_frac_values=ndvi_data_frac,
         peer_baselines=peer_bl,
     )
     ts = generate_ndvi_timeseries(parcels)
+    ts_srre = generate_srre_timeseries(parcels)
     return {
         "parcels": parcels,
         "ndvi": ndvi,
         "ndre": ndre,
+        "srre": srre,
         "slope": slope,
         "ndvi_std": ndvi_std,
         "risks": risks,
         "timeseries": ts,
+        "timeseries_srre": ts_srre,
     }

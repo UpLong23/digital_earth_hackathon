@@ -10,15 +10,15 @@ def _seed_for(lat, lon, start_date, end_date):
     return abs(hash(raw)) % (2**31)
 
 
-def _build_timeseries(parcels, ndvi_values, start_date, end_date):
-    """Build a 10-point time series centered around the given NDVI values."""
+def _build_timeseries(parcels, ndvi_values, srre_values, start_date, end_date):
+    """Build 10-point time series for NDVI and SRRE."""
     from datetime import date as dt_date
     start = dt_date.fromisoformat(start_date) if isinstance(start_date, str) else start_date
     end = dt_date.fromisoformat(end_date) if isinstance(end_date, str) else end_date
     total_days = (end - start).days or 120
     step = total_days // 9 or 1
 
-    ts_data = {}
+    ts_ndvi, ts_srre = {}, {}
     dates_idx = []
     rng = random.Random(42)
     for week in range(10):
@@ -26,12 +26,15 @@ def _build_timeseries(parcels, ndvi_values, start_date, end_date):
         dates_idx.append(d)
         for i, p in enumerate(parcels):
             pid = p["id"]
-            if pid not in ts_data:
-                ts_data[pid] = []
-            base_ndvi = ndvi_values[i] if ndvi_values[i] is not None else 0.5
-            ts_data[pid].append(round(base_ndvi + rng.uniform(-0.08, 0.08), 4))
+            ts_ndvi.setdefault(pid, [])
+            ts_srre.setdefault(pid, [])
+            base_v = ndvi_values[i] if ndvi_values[i] is not None else 0.5
+            base_s = srre_values[i] if srre_values[i] is not None else 1.5
+            ts_ndvi[pid].append(round(base_v + rng.uniform(-0.08, 0.08), 4))
+            ts_srre[pid].append(round(base_s + rng.uniform(-0.4, 0.4), 4))
 
-    return pd.DataFrame(ts_data, index=pd.DatetimeIndex(dates_idx))
+    idx = pd.DatetimeIndex(dates_idx)
+    return pd.DataFrame(ts_ndvi, index=idx), pd.DataFrame(ts_srre, index=idx)
 
 
 def build_real_data(conn, parcels, lat, lon, buffer_deg, start_date, end_date):
@@ -52,15 +55,17 @@ def build_real_data(conn, parcels, lat, lon, buffer_deg, start_date, end_date):
         rng = random.Random(_seed_for(lat, lon, start_date, end_date))
 
         # Generate per-parcel values
-        ndvi_list, ndre_list, slope_list = [], [], []
-        ndvi_std_list, ndvi_cnt_list = [], []
+        ndvi_list, ndre_list, srre_list, slope_list = [], [], [], []
+        ndvi_std_list, ndvi_df_list = [], []
         for p in parcels:
             noise = rng.uniform(-0.03, 0.03)
             ndvi_list.append(round(float(ndvi_mean + noise), 4))
-            ndre_list.append(round(float(ndre_mean + noise * 0.5), 4))
+            ndre_val = round(float(ndre_mean + noise * 0.5), 4)
+            ndre_list.append(ndre_val)
+            srre_list.append(round((1 + ndre_val) / (1 - ndre_val), 4))
             slope_list.append(round(slope_mean + rng.uniform(-0.5, 0.5), 1))
             ndvi_std_list.append(round(rng.uniform(0.02, 0.12), 3))
-            ndvi_cnt_list.append(int(rng.uniform(10, 80)))
+            ndvi_df_list.append(round(rng.uniform(0.3, 0.98), 2))
 
         from backend.risk import compute_risk_scores, compute_peer_baselines
         peer_bl = compute_peer_baselines(parcels, ndvi_list)
@@ -68,15 +73,17 @@ def build_real_data(conn, parcels, lat, lon, buffer_deg, start_date, end_date):
         risks = compute_risk_scores(
             parcels, ndvi_list, ndre_list, slope_list,
             ndvi_std_values=ndvi_std_list,
-            ndvi_count_values=ndvi_cnt_list,
+            ndvi_data_frac_values=ndvi_df_list,
             peer_baselines=peer_bl,
         )
 
-        ts_df = _build_timeseries(parcels, ndvi_list, start_date, end_date)
+        ts_df, ts_srre_df = _build_timeseries(parcels, ndvi_list, srre_list, start_date, end_date)
 
         return {
             "risks": risks,
             "timeseries": ts_df,
+            "timeseries_srre": ts_srre_df,
+            "srre": srre_list,
             "slope": slope_list,
             "ndvi_std": ndvi_std_list,
         }, None
@@ -131,9 +138,10 @@ def build_real_data_from_satellite(conn, parcels, lat, lon,
 
         ndvi_values = [s.get("ndvi") or 0.45 for s in stats]
         ndre_values = [s.get("ndre") or 0.20 for s in stats]
+        srre_values = [s.get("srre") or 1.5 for s in stats]
         slope_values = [s.get("slope") or 2.0 for s in stats]
         ndvi_std_values = [s.get("ndvi_std") for s in stats]
-        ndvi_count_values = [s.get("ndvi_count") or 0 for s in stats]
+        ndvi_data_frac_values = [s.get("ndvi_data_frac") or 0.0 for s in stats]
 
         if progress_callback:
             progress_callback(0.78, "Computing peer baselines...")
@@ -144,15 +152,17 @@ def build_real_data_from_satellite(conn, parcels, lat, lon,
         risks = compute_risk_scores(
             parcels, ndvi_values, ndre_values, slope_values,
             ndvi_std_values=ndvi_std_values,
-            ndvi_count_values=ndvi_count_values,
+            ndvi_data_frac_values=ndvi_data_frac_values,
             peer_baselines=peer_bl,
         )
 
-        ts_df = _build_timeseries(parcels, ndvi_values, start_date, end_date)
+        ts_df, ts_srre_df = _build_timeseries(parcels, ndvi_values, srre_values, start_date, end_date)
 
         return {
             "risks": risks,
             "timeseries": ts_df,
+            "timeseries_srre": ts_srre_df,
+            "srre": srre_values,
             "slope": slope_values,
             "ndvi_std": ndvi_std_values,
         }, None

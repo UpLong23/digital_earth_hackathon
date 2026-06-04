@@ -34,10 +34,17 @@ def render_sidebar():
             lon_in = st.number_input("Longitude", value=DEFAULT_LON, format="%.4f",
                                      key="lon_input", disabled=not is_custom)
 
-        today = date.today()
-        default_start = today - timedelta(days=120)
+        # today = date.today()
+        # default_start = today - timedelta(days=120)
+        # start_date = st.date_input("Start date", default_start)
+        # end_date = st.date_input("End date", today)
+        
+        
+        default_start = date.strptime("2025-04-01", "%Y-%m-%d")
+        default_end = date.strptime("2025-09-30", "%Y-%m-%d")
+        
         start_date = st.date_input("Start date", default_start)
-        end_date = st.date_input("End date", today)
+        end_date = st.date_input("End date", default_end)
 
         crop_options = ["All"] + sorted(CROP_N_DEMAND.keys())
         crop_type = st.selectbox("Crop type", crop_options)
