@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 from backend.parcels import load_parcels
-from backend.risk import compute_risk_scores
+from backend.risk import compute_risk_scores, compute_peer_baselines
 
 CACHE_DIR = Path("cache")
 CACHE_DIR.mkdir(exist_ok=True)
@@ -22,8 +22,6 @@ CROP_BASE_NDRE = {
     "Potato": 0.62, "Sugar Beet": 0.60, "Ley / Grass": 0.38,
     "Fallow": 0.15, "Peas": 0.35,
 }
-
-
 def _crop_ndvi(p):
     base = CROP_BASE_NDVI.get(p["crop"], 0.60)
     val = base + float(_rng.normal(0, 0.03))
@@ -48,26 +46,6 @@ def generate_demo_slope(parcels):
     return [round(float(_rng.uniform(0.3, 5.5)), 1) for _ in parcels]
 
 
-def generate_demo_ndti(parcels):
-    return [round(float(_rng.uniform(-0.4, 0.3)), 3) for _ in parcels]
-
-
-def generate_demo_bsi(parcels):
-    return [round(float(_rng.uniform(-0.3, 0.4)), 3) for _ in parcels]
-
-
-def generate_demo_ndmi(parcels):
-    return [round(float(_rng.uniform(0.0, 0.5)), 3) for _ in parcels]
-
-
-def generate_demo_vh_vv(parcels):
-    return [round(float(_rng.uniform(0.15, 0.4)), 3) for _ in parcels]
-
-
-def generate_demo_spreading(parcels):
-    return [1 if _rng.random() < 0.3 else 0 for _ in parcels]
-
-
 def generate_ndvi_timeseries(parcels, n_steps=12):
     dates = pd.date_range(end=datetime.today(), periods=n_steps, freq="14D")
     ts_data = {}
@@ -89,28 +67,25 @@ def build_demo_data(parcels=None, lat=None, lon=None):
         _rng = np.random.default_rng(seed)
     ndvi = generate_demo_ndvi(parcels)
     ndre = generate_demo_ndre(parcels)
-    ndti = generate_demo_ndti(parcels)
-    bsi = generate_demo_bsi(parcels)
-    ndmi = generate_demo_ndmi(parcels)
-    vh_vv = generate_demo_vh_vv(parcels)
     slope = generate_demo_slope(parcels)
-    spreading = generate_demo_spreading(parcels)
+    ndvi_std = [round(float(_rng.uniform(0.02, 0.12)), 3) for _ in parcels]
+    ndvi_count = [int(_rng.uniform(10, 80)) for _ in parcels]
+
+    peer_bl = compute_peer_baselines(parcels, ndvi)
+
     risks = compute_risk_scores(
-        parcels, ndvi, ndre, spreading, slope,
-        ndti_values=ndti, bsi_values=bsi,
-        ndmi_values=ndmi, vh_vv_values=vh_vv,
+        parcels, ndvi, ndre, slope,
+        ndvi_std_values=ndvi_std,
+        ndvi_count_values=ndvi_count,
+        peer_baselines=peer_bl,
     )
     ts = generate_ndvi_timeseries(parcels)
     return {
         "parcels": parcels,
         "ndvi": ndvi,
         "ndre": ndre,
-        "ndti": ndti,
-        "bsi": bsi,
-        "ndmi": ndmi,
-        "vh_vv": vh_vv,
         "slope": slope,
-        "spreading": spreading,
+        "ndvi_std": ndvi_std,
         "risks": risks,
         "timeseries": ts,
     }

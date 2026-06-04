@@ -118,12 +118,11 @@ st.markdown(
 
 st.markdown(
     "<p style='color:#94a3b8;font-size:0.9rem;max-width:800px;'>"
-    "Gödslingskollen monitors overfertilization risk on Swedish farmland. "
-    "Using satellite-derived vegetation indices (NDVI, NDRE), digital elevation models (slope), "
-    "and parcel-level data from the Swedish LPIS register, each field gets a risk score from 0–100. "
-    "The score combines five factors: nitrogen stress (NDVI deficit), bare soil detection (NDTI/BSI), "
-    "runoff potential (terrain slope), manure spreading (Sentinel-1 SAR), and crop type sensitivity. "
-    "A soil moisture amplifier (NDMI) and synergy multiplier boost the score when multiple risks align. "
+    "Gödslingskollen detects possible overfertilization on Swedish farmland. "
+    "Each field is scored 0–100 by comparing its NDVI/NDRE against same-crop peer fields, "
+    "within-field heterogeneity, and terrain runoff potential. "
+    "High scores mean elevated vigor relative to peers with high within-field variability — "
+    "a pattern consistent with excessive nitrogen. "
     "Select a municipality or enter coordinates to explore field-level risks."
     "</p>",
     unsafe_allow_html=True,
@@ -176,6 +175,7 @@ else:
                 conn, all_parcels, lat, lon,
                 sidebar_filters["start_date"], sidebar_filters["end_date"],
                 progress_callback=_cb,
+                municipality=selected_muni if is_muni_mode else None,
             )
             if err:
                 st.error(f"Satellite fetch failed: {err}")
@@ -305,9 +305,10 @@ with st.expander("📋 Full Parcel Data Table", expanded=False):
                 "Parcel": p["id"], "Crop": p["crop"],
                 "Area (ha)": p["area_ha"],
                 "NDVI": r["ndvi"], "NDRE": r["ndre"],
-                "NDTI": r.get("ndti"), "BSI": r.get("bsi"),
-                "Slope (%)": dd["slope"][i],
-                "Spreading": "Yes" if dd["spreading"][i] else "No",
+                "Vigor": r.get("vigor_score"),
+                "Heterog.": r.get("heterogeneity_score"),
+                "Runoff": r.get("runoff_score"),
+                "Conf.": r.get("confidence"),
                 "Risk Score": r["risk_score"], "Risk Level": lbl,
             })
         df = pd.DataFrame(rows)
@@ -320,9 +321,8 @@ with st.expander("📋 Full Parcel Data Table", expanded=False):
 
 st.divider()
 for text in [
-    "🛰️ **Sentinel-2** — NDVI, NDRE for crop nitrogen status",
-    "📡 **Sentinel-1** — SAR change detection flags manure spreading",
+    "🛰️ **Sentinel-2** — NDVI & NDRE for crop health & anomaly",
     "⛰️ **EU-DTM** — Slope analysis for runoff potential",
-    "🗺️ **LPIS + NMD** — Parcel registry with declared N application",
+    "🗺️ **LPIS** — Parcel registry from Swedish Board of Agriculture",
 ]:
     st.markdown(text)

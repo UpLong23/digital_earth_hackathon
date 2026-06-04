@@ -20,9 +20,7 @@ CROP_N_DEMAND = {
 }
 
 RISK_WEIGHTS = {
-    "n_uptake": 0.25,
-    "runoff": 0.20,
-    "bare_soil": 0.25,
-    "spreading": 0.20,
-    "crop_factor": 0.10,
+    "n_uptake": 0.44,
+    "runoff": 0.36,
+    "anomaly": 0.20,
 }

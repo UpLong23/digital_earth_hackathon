@@ -1,7 +1,7 @@
 import random
 from datetime import date, timedelta
 import pandas as pd
-from config import CROP_N_DEMAND, RISK_WEIGHTS
+from config import RISK_WEIGHTS
 
 
 def _seed_for(lat, lon, start_date, end_date):
@@ -51,62 +51,34 @@ def build_real_data(conn, parcels, lat, lon, buffer_deg, start_date, end_date):
 
         rng = random.Random(_seed_for(lat, lon, start_date, end_date))
 
-        risks = []
+        # Generate per-parcel values
+        ndvi_list, ndre_list, slope_list = [], [], []
+        ndvi_std_list, ndvi_cnt_list = [], []
         for p in parcels:
-            parcel_id = p["id"] if "id" in p else str(parcels.index(p))
-            crop = p.get("crop", "Unknown")
+            noise = rng.uniform(-0.03, 0.03)
+            ndvi_list.append(round(float(ndvi_mean + noise), 4))
+            ndre_list.append(round(float(ndre_mean + noise * 0.5), 4))
+            slope_list.append(round(slope_mean + rng.uniform(-0.5, 0.5), 1))
+            ndvi_std_list.append(round(rng.uniform(0.02, 0.12), 3))
+            ndvi_cnt_list.append(int(rng.uniform(10, 80)))
 
-            base_demand = CROP_N_DEMAND.get(crop, CROP_N_DEMAND["Unknown"])
-            n_uptake_score = min(100, max(0, (1 - base_demand) * 100))
+        from backend.risk import compute_risk_scores, compute_peer_baselines
+        peer_bl = compute_peer_baselines(parcels, ndvi_list)
 
-            runoff_score = min(100, (slope_mean / 15) * 100)
+        risks = compute_risk_scores(
+            parcels, ndvi_list, ndre_list, slope_list,
+            ndvi_std_values=ndvi_std_list,
+            ndvi_count_values=ndvi_cnt_list,
+            peer_baselines=peer_bl,
+        )
 
-            spreading_detected = ndvi_mean < 0.25 and ndre_mean < 0.10
-            spreading_score = 80 if spreading_detected else 20
-
-            crop_factor = (1 - base_demand) * 100
-
-            w = RISK_WEIGHTS
-            raw = (
-                w["n_uptake"] * n_uptake_score
-                + w["runoff"] * runoff_score
-                + w["spreading"] * spreading_score
-                + w["crop_factor"] * crop_factor
-            )
-
-            high_count = sum(
-                [
-                    n_uptake_score > 60,
-                    runoff_score > 60,
-                    spreading_score > 60,
-                    crop_factor > 60,
-                ]
-            )
-            synergy = 1.0 + (high_count - 1) * 0.15 if high_count > 1 else 1.0
-            risk_score = min(100, raw * synergy)
-
-            per_parcel_noise = rng.uniform(-0.03, 0.03)
-
-            risks.append(
-                {
-                    "parcel_id": parcel_id,
-                    "risk_score": round(float(risk_score), 1),
-                    "ndvi": round(float(ndvi_mean + per_parcel_noise), 4),
-                    "ndre": round(float(ndre_mean + per_parcel_noise * 0.5), 4),
-                }
-            )
-
-        ndvi_vals = [r["ndvi"] for r in risks]
-        ts_df = _build_timeseries(parcels, ndvi_vals, start_date, end_date)
-
-        slopes = [round(slope_mean + rng.uniform(-0.5, 0.5), 1) for _ in risks]
-        spreadings = [False for _ in risks]
+        ts_df = _build_timeseries(parcels, ndvi_list, start_date, end_date)
 
         return {
             "risks": risks,
             "timeseries": ts_df,
-            "slope": slopes,
-            "spreading": spreadings,
+            "slope": slope_list,
+            "ndvi_std": ndvi_std_list,
         }, None
     except Exception as e:
         return None, f"Risk computation failed: {e}"
@@ -127,15 +99,16 @@ def _parcel_bbox(parcels):
 
 def build_real_data_from_satellite(conn, parcels, lat, lon,
                                     start_date, end_date,
-                                    progress_callback=None):
+                                    progress_callback=None,
+                                    municipality=None):
     """Build risk data using real Copernicus satellite imagery.
 
-    Downloads Sentinel-2 NDVI/NDRE and Copernicus DEM via openEO,
-    computes per-parcel zonal statistics, then feeds into the risk engine.
-
-    When *parcels* span a large area (e.g. an entire municipality) the
-    bounding box is derived from the parcel geometries instead of using
-    the small fixed box around (lat, lon).
+    Features extracted:
+      - NDVI, NDRE (optical)
+      - NDVI_std (within-field spatial variance)
+      - NDVI_count (valid pixel count → confidence)
+      - Slope (runoff)
+      - Peer-group baselines (same-crop median/MAD)
 
     Returns (data_dict, None) or (None, error_string).
     """
@@ -143,30 +116,36 @@ def build_real_data_from_satellite(conn, parcels, lat, lon,
         if progress_callback:
             progress_callback(0.05, "Starting satellite fetch...")
 
-        # Use parcel extent when it's larger than the default 0.15° box
         bbox = _parcel_bbox(parcels)
 
-        from backend.satellite import fetch_satellite_data
+        from backend.satellite import submit_s2_job, fetch_satellite_data
+
+        s2_job = submit_s2_job(conn, bbox, start_date, end_date,
+                               progress_callback)
+
         stats = fetch_satellite_data(
             conn, parcels, lat, lon, start_date, end_date,
             progress_callback=progress_callback,
-            bbox=bbox,
+            bbox=bbox, s2_job=s2_job,
         )
 
         ndvi_values = [s.get("ndvi") or 0.45 for s in stats]
         ndre_values = [s.get("ndre") or 0.20 for s in stats]
-        ndti_values = [s.get("ndti") or 0.0 for s in stats]
-        bsi_values = [s.get("bsi") or 0.0 for s in stats]
-        ndmi_values = [s.get("ndmi") or 0.2 for s in stats]
-        vh_vv_values = [s.get("vh_vv") or 0.25 for s in stats]
         slope_values = [s.get("slope") or 2.0 for s in stats]
-        spreading_flags = [0 for _ in stats]
+        ndvi_std_values = [s.get("ndvi_std") for s in stats]
+        ndvi_count_values = [s.get("ndvi_count") or 0 for s in stats]
 
-        from backend.risk import compute_risk_scores
+        if progress_callback:
+            progress_callback(0.78, "Computing peer baselines...")
+
+        from backend.risk import compute_risk_scores, compute_peer_baselines
+        peer_bl = compute_peer_baselines(parcels, ndvi_values, ndvi_std_values)
+
         risks = compute_risk_scores(
-            parcels, ndvi_values, ndre_values, spreading_flags, slope_values,
-            ndti_values=ndti_values, bsi_values=bsi_values,
-            ndmi_values=ndmi_values, vh_vv_values=vh_vv_values,
+            parcels, ndvi_values, ndre_values, slope_values,
+            ndvi_std_values=ndvi_std_values,
+            ndvi_count_values=ndvi_count_values,
+            peer_baselines=peer_bl,
         )
 
         ts_df = _build_timeseries(parcels, ndvi_values, start_date, end_date)
@@ -174,12 +153,8 @@ def build_real_data_from_satellite(conn, parcels, lat, lon,
         return {
             "risks": risks,
             "timeseries": ts_df,
-            "ndti": ndti_values,
-            "bsi": bsi_values,
-            "ndmi": ndmi_values,
-            "vh_vv": vh_vv_values,
             "slope": slope_values,
-            "spreading": [False for _ in stats],
+            "ndvi_std": ndvi_std_values,
         }, None
     except Exception as e:
         import traceback

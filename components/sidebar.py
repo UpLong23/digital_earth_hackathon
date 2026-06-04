@@ -149,7 +149,8 @@ def render_sidebar():
             st.rerun()
 
         st.divider()
-        st.caption("Data: Sentinel-1, Sentinel-2, EU-DTM via Copernicus Data Space")
+        st.caption("Data: Sentinel-2, EU-DTM via Copernicus Data Space")
+
         st.caption("Built for Digital Earth Sweden Hackathon 2026")
 
         st.session_state.selected_municipality = selected_muni
