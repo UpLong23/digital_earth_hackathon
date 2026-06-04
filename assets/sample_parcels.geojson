@@ -1,0 +1,395 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-001",
+        "crop_2024": "Winter Wheat",
+        "crop_2023": "Barley",
+        "area_ha": 12.4,
+        "declared_n_kg_ha": 170,
+        "soil_type": "Clay loam",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.082,
+              55.925
+            ],
+            [
+              13.102,
+              55.927
+            ],
+            [
+              13.105,
+              55.913
+            ],
+            [
+              13.084,
+              55.911
+            ],
+            [
+              13.082,
+              55.925
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-002",
+        "crop_2024": "Rapeseed",
+        "crop_2023": "Winter Wheat",
+        "area_ha": 8.7,
+        "declared_n_kg_ha": 210,
+        "soil_type": "Sandy loam",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.107,
+              55.928
+            ],
+            [
+              13.124,
+              55.926
+            ],
+            [
+              13.122,
+              55.915
+            ],
+            [
+              13.105,
+              55.913
+            ],
+            [
+              13.107,
+              55.928
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-003",
+        "crop_2024": "Barley",
+        "crop_2023": "Oats",
+        "area_ha": 15.2,
+        "declared_n_kg_ha": 140,
+        "soil_type": "Clay",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.127,
+              55.925
+            ],
+            [
+              13.147,
+              55.923
+            ],
+            [
+              13.144,
+              55.91
+            ],
+            [
+              13.124,
+              55.912
+            ],
+            [
+              13.127,
+              55.925
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-004",
+        "crop_2024": "Winter Wheat",
+        "crop_2023": "Rapeseed",
+        "area_ha": 6.3,
+        "declared_n_kg_ha": 260,
+        "soil_type": "Silt loam",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.087,
+              55.91
+            ],
+            [
+              13.107,
+              55.908
+            ],
+            [
+              13.105,
+              55.897
+            ],
+            [
+              13.085,
+              55.899
+            ],
+            [
+              13.087,
+              55.91
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-005",
+        "crop_2024": "Ley / Grass",
+        "crop_2023": "Ley / Grass",
+        "area_ha": 20.1,
+        "declared_n_kg_ha": 80,
+        "soil_type": "Peat",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.11,
+              55.907
+            ],
+            [
+              13.13,
+              55.905
+            ],
+            [
+              13.127,
+              55.893
+            ],
+            [
+              13.107,
+              55.895
+            ],
+            [
+              13.11,
+              55.907
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-006",
+        "crop_2024": "Maize",
+        "crop_2023": "Potato",
+        "area_ha": 9.8,
+        "declared_n_kg_ha": 180,
+        "soil_type": "Sandy loam",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.15,
+              55.922
+            ],
+            [
+              13.167,
+              55.92
+            ],
+            [
+              13.164,
+              55.908
+            ],
+            [
+              13.147,
+              55.91
+            ],
+            [
+              13.15,
+              55.922
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-007",
+        "crop_2024": "Winter Wheat",
+        "crop_2023": "Fallow",
+        "area_ha": 4.2,
+        "declared_n_kg_ha": 290,
+        "soil_type": "Sandy loam",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.132,
+              55.909
+            ],
+            [
+              13.144,
+              55.907
+            ],
+            [
+              13.142,
+              55.9
+            ],
+            [
+              13.13,
+              55.902
+            ],
+            [
+              13.132,
+              55.909
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-008",
+        "crop_2024": "Potato",
+        "crop_2023": "Maize",
+        "area_ha": 5.6,
+        "declared_n_kg_ha": 300,
+        "soil_type": "Sandy loam",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.092,
+              55.897
+            ],
+            [
+              13.11,
+              55.895
+            ],
+            [
+              13.108,
+              55.885
+            ],
+            [
+              13.09,
+              55.887
+            ],
+            [
+              13.092,
+              55.897
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-009",
+        "crop_2024": "Winter Wheat",
+        "crop_2023": "Sugar Beet",
+        "area_ha": 11.2,
+        "declared_n_kg_ha": 155,
+        "soil_type": "Clay loam",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.162,
+              55.919
+            ],
+            [
+              13.18,
+              55.917
+            ],
+            [
+              13.177,
+              55.905
+            ],
+            [
+              13.16,
+              55.907
+            ],
+            [
+              13.162,
+              55.919
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "parcel_id": "SE-SVALOV-010",
+        "crop_2024": "Oats",
+        "crop_2023": "Barley",
+        "area_ha": 7.9,
+        "declared_n_kg_ha": 100,
+        "soil_type": "Silt loam",
+        "municipality": "Sval\u00f6v"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              13.114,
+              55.89
+            ],
+            [
+              13.132,
+              55.888
+            ],
+            [
+              13.129,
+              55.877
+            ],
+            [
+              13.111,
+              55.879
+            ],
+            [
+              13.114,
+              55.89
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
