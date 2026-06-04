@@ -1,0 +1,58 @@
+
+.stApp {
+    background-color: #0e1117;
+}
+[data-testid="stHeader"] {
+    background: linear-gradient(90deg, #0f172a 0%, #1e3a5f 100%);
+}
+h1, h2, h3 {
+    color: #e2e8f0 !important;
+}
+.stAlert {
+    border-left: 4px solid #22c55e;
+    background-color: #1e293b;
+}
+[data-testid="stMetricValue"] {
+    font-size: 2rem;
+    color: #e2e8f0;
+}
+[data-testid="stMetricLabel"] {
+    color: #94a3b8;
+}
+[data-testid="stSidebar"] {
+    background-color: #0f172a;
+}
+[data-testid="stSidebar"] .sidebar-content {
+    background-color: #0f172a;
+}
+.stMarkdown {
+    color: #e2e8f0;
+}
+[data-testid="stExpander"] {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+}
+.stDataFrame {
+    background-color: #1e293b;
+}
+[data-testid="stDataFrame"] td {
+    color: #e2e8f0;
+}
+div[data-testid="stDataFrame"] th {
+    background-color: #0f172a;
+    color: #94a3b8;
+}
+.st-bb {
+    background-color: #1e293b;
+}
+.st-cb {
+    color: #e2e8f0;
+}
+.st-at {
+    background-color: #1e293b;
+}
+[data-testid="stDownloadButton"] button {
+    background-color: #1e3a5f;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+}
