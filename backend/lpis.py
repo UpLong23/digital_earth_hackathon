@@ -13,6 +13,7 @@ from urllib.request import urlopen
 from pyproj import Transformer
 
 import requests
+import streamlit as st
 
 DATA_DIR = Path(tempfile.gettempdir()) / "godslingkollen_lpis"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -315,60 +316,56 @@ def get_parcels_in_municipality(muni_name: str,
     """Get all LPIS parcels within a municipality boundary.
 
     Uses the national parquet cache. Returns up to *max_features* parcels
-    sorted by area descending.
+    sorted by area descending. Results are cached by municipality name.
     """
     if not is_cached():
         return []
 
+    result = _cached_municipality_parcels(muni_name, max_features)
+    return result or []
+
+
+@st.cache_data(ttl=3600)
+def _cached_municipality_parcels(municipality: str, max_features: int = 5000) -> list | None:
+    """Load and filter LPIS parcels for a municipality, cached by name."""
     from backend.municipalities import get_municipality_polygon_3006
-
-    poly_3006 = get_municipality_polygon_3006(muni_name)
+    poly_3006 = get_municipality_polygon_3006(municipality)
     if poly_3006 is None:
-        return []
-
+        return None
     bbox_3006 = poly_3006.bounds
     gdf = _load_gdf()
     if gdf.empty:
-        return []
-
+        return None
     idx = gdf.sindex
     possible = list(idx.intersection(bbox_3006))
     if not possible:
-        return []
-
+        return None
     filtered = gdf.iloc[possible]
     filtered = filtered[filtered.intersects(poly_3006)]
     filtered = filtered.sort_values("area", ascending=False)
     filtered = filtered.head(max_features)
-
     if filtered.crs is None or str(filtered.crs) != "EPSG:4326":
         filtered = filtered.to_crs("EPSG:4326")
-
     parcels = []
-
     for _, row in filtered.iterrows():
         geom = row.geometry.__geo_interface__
         if row.geometry.geom_type == "MultiPolygon":
             polys = sorted(row.geometry.geoms, key=lambda g: g.area, reverse=True)
             geom = polys[0].__geo_interface__
-
         sv_name = str(row.get("crop_name", "")).strip()
         internal_crop = _map_sv_crop(sv_name)
-
         area_ha = float(row.get("area") or 1.0)
         pid = str(row.get("id", f"LPIS-{row.name}"))
         coords = geom["coordinates"][0]
-
         parcels.append({
             "id": f"LPIS-{pid}",
             "crop": internal_crop,
             "area_ha": area_ha,
             "geometry": geom,
-            "municipality": muni_name,
+            "municipality": municipality,
             "lat_center": float(sum(c[1] for c in coords) / len(coords)),
             "lon_center": float(sum(c[0] for c in coords) / len(coords)),
         })
-
     return parcels
 
 

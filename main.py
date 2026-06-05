@@ -123,9 +123,7 @@ if last_hash is None or last_hash != query_hash:
 
     @st.cache_resource(ttl=3600)
     def _warm_lpis_cache():
-        if is_cached():
-            from backend.lpis import _load_gdf
-            _load_gdf()
+        pass
 
     _warm_lpis_cache()
 
