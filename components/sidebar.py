@@ -53,6 +53,29 @@ def render_sidebar():
         st.markdown("**Analysis Mode**")
         use_demo = st.toggle("Use demo data (synthetic)", value=True)
 
+        use_wofost = st.toggle("🧬 Enable WOFOST crop modeling", value=False,
+                               help="Simulates crop growth with WOFOST for yield and N-uptake estimates. Requires weather and soil data.")
+
+        use_nutrient = False
+        n_input_override = None
+        sowing_override = None
+        if not use_demo and use_wofost:
+            use_nutrient = st.toggle("🌿 Enable nutrient-risk modeling", value=False,
+                                     help="Adds N-surplus and overfertilization assessment from WOFOST outputs.")
+            n_input_override = st.number_input("Observed N input (kg/ha)",
+                                                value=0.0, min_value=0.0, max_value=500.0, step=5.0,
+                                                help="Optional: known N application rate. 0 = auto-estimate from crop.")
+            if st.button("🧑‍🌾 Clear N input"):
+                n_input_override = None
+            with st.expander("⚙️ Advanced WOFOST settings"):
+                sowing_override = st.date_input(
+                    "Sowing date override",
+                    value=date(2025, 4, 20),
+                    help="Override default Swedish sowing date for the selected crop.",
+                )
+        elif use_demo and use_wofost:
+            st.info("WOFOST modeling requires real data. Demo mode will use heuristic estimates.")
+
         if not use_demo:
             st.markdown("**Satellite Data Source**")
             st.write("Copernicus Data Space — openEO OIDC")
@@ -136,6 +159,11 @@ def render_sidebar():
                 download_national()
                 st.rerun()
 
+        st.caption(
+            "⚠️ LPIS shows the latest declared crop — not necessarily "
+            "what was actually sown in your selected season."
+        )
+
         st.divider()
         st.markdown("**Risk Legend**")
         cols = st.columns(4)
@@ -170,4 +198,8 @@ def render_sidebar():
             "crop_type": crop_type,
             "use_demo": use_demo,
             "municipality": selected_muni,
+            "use_wofost": use_wofost,
+            "use_nutrient": use_nutrient,
+            "n_input_override": n_input_override,
+            "sowing_override": sowing_override,
         }

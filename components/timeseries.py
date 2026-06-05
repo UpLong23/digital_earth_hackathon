@@ -24,15 +24,28 @@ def _selected_indices(parcels, risks, n_lines):
     return sorted(selected)
 
 
-def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks, n_lines=10):
+def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks,
+                           n_lines=10, wofost_results=None, nutrient_results=None):
+    """3-row time series chart (NDVI, SRRE, risk histogram).
+
+    If wofost_results/nutrient_results are provided, also renders
+    an N surplus histogram below.
+    """
+    has_wofost = bool(wofost_results and nutrient_results)
+    n_rows = 4 if has_wofost else 3
+
+    titles = [
+        "NDVI Time Series — Selected Parcels",
+        "SRRE (B08/B05) Time Series — Selected Parcels",
+        "Risk Score Distribution",
+    ]
+    if has_wofost:
+        titles.append("N Surplus Distribution (kg/ha)")
+
     fig = make_subplots(
-        rows=3, cols=1,
+        rows=n_rows, cols=1,
         shared_xaxes=True,
-        subplot_titles=(
-            "NDVI Time Series — Selected Parcels",
-            "SRRE (B08/B05) Time Series — Selected Parcels",
-            "Risk Score Distribution",
-        ),
+        subplot_titles=titles,
         vertical_spacing=0.12,
     )
 
@@ -67,8 +80,7 @@ def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks, n_
     scores = [r["risk_score"] for r in risks]
     fig.add_trace(
         go.Histogram(
-            x=scores,
-            nbinsx=20,
+            x=scores, nbinsx=20,
             marker_color="#60a5fa",
             marker_line_color="#1e293b",
             marker_line_width=1,
@@ -77,8 +89,25 @@ def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks, n_
         row=3, col=1,
     )
 
+    if has_wofost:
+        n_surplus_vals = [
+            n.get("n_surplus_kg_ha", 0) for n in nutrient_results
+            if n.get("n_surplus_kg_ha") is not None
+        ]
+        if n_surplus_vals:
+            fig.add_trace(
+                go.Histogram(
+                    x=n_surplus_vals, nbinsx=20,
+                    marker_color="#34d399",
+                    marker_line_color="#1e293b",
+                    marker_line_width=1,
+                    name="N Surplus",
+                ),
+                row=4, col=1,
+            )
+
     fig.update_layout(
-        height=650,
+        height=700 if has_wofost else 650,
         barmode="overlay",
         hovermode="x unified",
         margin={"l": 20, "r": 20, "t": 40, "b": 20},
@@ -93,5 +122,52 @@ def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks, n_
     fig.update_yaxes(title_text="SRRE", row=2, col=1, color="#94a3b8", gridcolor="#334155")
     fig.update_xaxes(title_text="Risk Score", row=3, col=1, color="#94a3b8", gridcolor="#334155")
     fig.update_yaxes(title_text="Count", row=3, col=1, color="#94a3b8", gridcolor="#334155")
+    if has_wofost:
+        fig.update_xaxes(title_text="N Surplus (kg/ha)", row=4, col=1, color="#94a3b8", gridcolor="#334155")
+        fig.update_yaxes(title_text="Count", row=4, col=1, color="#94a3b8", gridcolor="#334155")
 
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_wofost_summary(wofost_results, nutrient_results, parcels, risks):
+    """Render WOFOST summary metrics and yield vs attainable chart."""
+    if not wofost_results:
+        return
+
+    col1, col2, col3, col4 = st.columns(4)
+    yields = [w.get("yield_kg_ha", 0) or 0 for w in wofost_results]
+    avg_yield = sum(yields) / max(len(yields), 1)
+    col1.metric("Avg Predicted Yield", f"{avg_yield:.0f} kg/ha")
+
+    n_surplus_vals = [n.get("n_surplus_kg_ha", 0) or 0 for n in nutrient_results] if nutrient_results else []
+    total_surplus = sum(n_surplus_vals)
+    col2.metric("Total N Surplus", f"{total_surplus:.0f} kg")
+
+    high_risk = sum(1 for n in nutrient_results or []
+                    if n.get("overfertilization_risk_level") in ("High", "Critical"))
+    col3.metric("High N-Risk Parcels", high_risk)
+
+    fallbacks = sum(1 for w in wofost_results if w.get("fallback_flags"))
+    col4.metric("Fallback Mappings", fallbacks)
+
+    # Yield vs attainable scatter
+    fig = go.Figure()
+    yields_ok = [w.get("yield_kg_ha", 0) or 0 for w in wofost_results]
+    fig.add_trace(go.Scatter(
+        x=list(range(len(yields_ok))),
+        y=yields_ok,
+        mode="markers",
+        marker={"color": "#34d399", "size": 6},
+        name="Predicted yield",
+    ))
+    fig.update_layout(
+        height=250,
+        title="Predicted Yield per Parcel (kg/ha)",
+        margin={"l": 20, "r": 20, "t": 30, "b": 20},
+        paper_bgcolor="#0e1117",
+        plot_bgcolor="#1e293b",
+        font={"color": "#e2e8f0"},
+        xaxis={"color": "#94a3b8", "gridcolor": "#334155"},
+        yaxis={"color": "#94a3b8", "gridcolor": "#334155"},
+    )
     st.plotly_chart(fig, use_container_width=True)

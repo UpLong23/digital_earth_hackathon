@@ -7,7 +7,7 @@ from backend.risk import risk_label
 from backend.data import build_demo_data
 from components.sidebar import render_sidebar
 from components.map import render_risk_map
-from components.timeseries import render_ndvi_timeseries
+from components.timeseries import render_ndvi_timeseries, render_wofost_summary
 
 MAX_MAP_PARCELS = 2000                                                                                          # TODO
 
@@ -51,6 +51,8 @@ query_hash = hash((
     sidebar_filters["end_date"],
     sidebar_filters["crop_type"],
     sidebar_filters["use_demo"],
+    sidebar_filters["use_wofost"],
+    sidebar_filters["use_nutrient"],
 ))
 last_hash = st.session_state.get("last_query_hash")
 
@@ -135,6 +137,11 @@ if st.session_state.get("lpis_source"):
     crops = set(p["crop"] for p in all_parcels if p["crop"] != "Unknown")
     loc_label = selected_muni if is_muni_mode else f"({lat:.3f}, {lon:.3f})"
     st.caption(f"🗺️ {n_fields} real LPIS parcels ({total_area:.0f} ha, {len(crops)} crop types) — {loc_label}")
+    st.info(
+        "ℹ️ **LPIS crop labels are from the latest annual declaration — they may not reflect actual sowing in your selected season.** "
+        "WOFOST simulation uses these labels; if the crop changed, predicted yield may be inaccurate.",
+        icon="📋",
+    )
 
 if use_demo:
     if "demo_data" not in st.session_state:
@@ -177,6 +184,7 @@ else:
                 sidebar_filters["start_date"], sidebar_filters["end_date"],
                 progress_callback=_cb,
                 municipality=selected_muni if is_muni_mode else None,
+                use_wofost=sidebar_filters["use_wofost"],
             )
             if err:
                 st.error(f"Satellite fetch failed: {err}")
@@ -190,6 +198,7 @@ else:
                 real_data, err = build_real_data(
                     conn, all_parcels, lat, lon, DEFAULT_BUFFER_DEG,
                     sidebar_filters["start_date"], sidebar_filters["end_date"],
+                    use_wofost=sidebar_filters["use_wofost"],
                 )
             if err:
                 st.error(f"Real data fetch failed: {err}. Falling back to demo.")
@@ -314,12 +323,87 @@ with col_right:
     st.plotly_chart(fig_crop, use_container_width=True)
 
 st.divider()
+# ── WOFOST summary (if available) ──────────────────────────────────
+if dd.get("wofost_results"):
+    render_wofost_summary(
+        dd["wofost_results"], dd.get("nutrient_results"),
+        all_parcels, dd["risks"],
+    )
+
+    # ── Yield charts side by side ──────────────────────────────────
+    ycol_left, ycol_right = st.columns(2)
+
+    wofost_res = dd["wofost_results"]
+    with ycol_left:
+        st.subheader("📊 Total Yield per Crop Type")
+        crop_yield = {}
+        for p, w in zip(all_parcels, wofost_res):
+            crop = p["crop"]
+            area = p.get("area_ha", 0)
+            yld = w.get("yield_kg_ha") or 0
+            crop_yield[crop] = crop_yield.get(crop, 0) + yld * area
+        cy_df = pd.Series(crop_yield).sort_values(ascending=True)
+        if not cy_df.empty:
+            fig_crop_yield = go.Figure(go.Bar(
+                x=cy_df.values,
+                y=cy_df.index,
+                orientation="h",
+                marker_color="#34d399",
+                text=[f"{v:.0f} kg" for v in cy_df.values],
+                textposition="outside",
+            ))
+            fig_crop_yield.update_layout(
+                height=300,
+                margin={"l": 10, "r": 40, "t": 10, "b": 10},
+                paper_bgcolor="#0e1117", plot_bgcolor="#0e1117",
+                font={"color": "#e2e8f0"},
+                xaxis={"title": "Total Yield (kg)", "color": "#94a3b8", "gridcolor": "#334155"},
+                yaxis={"color": "#94a3b8", "gridcolor": "#334155"},
+                hovermode="y unified",
+            )
+            st.plotly_chart(fig_crop_yield, use_container_width=True)
+
+    with ycol_right:
+        st.subheader("🧺 Total Yield per Parcel")
+        parcel_yield = []
+        parcel_ids_list = []
+        for p, w in zip(all_parcels, wofost_res):
+            area = p.get("area_ha", 0)
+            yld = w.get("yield_kg_ha") or 0
+            parcel_yield.append(yld * area)
+            parcel_ids_list.append(p["id"])
+        if parcel_yield:
+            fig_parcel_yield = go.Figure(go.Bar(
+                x=parcel_ids_list,
+                y=parcel_yield,
+                marker_color="#60a5fa",
+                text=[f"{v:.0f}" for v in parcel_yield],
+                textposition="outside",
+            ))
+            fig_parcel_yield.update_layout(
+                height=300,
+                margin={"l": 10, "r": 40, "t": 10, "b": 80},
+                paper_bgcolor="#0e1117", plot_bgcolor="#0e1117",
+                font={"color": "#e2e8f0"},
+                xaxis={"color": "#94a3b8", "gridcolor": "#334155", "tickangle": -45},
+                yaxis={"title": "Total Yield (kg)", "color": "#94a3b8", "gridcolor": "#334155"},
+                hovermode="x",
+            )
+            st.plotly_chart(fig_parcel_yield, use_container_width=True)
+
+    st.divider()
+
 st.subheader("📈 NDVI & SRRE Time Series")
 st.caption("Highest-risk parcel (reddest line), lowest-risk parcel, and random samples in between.")
 n_lines = st.slider("Parcel lines to show", 1, 10, 10,
                      help="Shows highest- and lowest-risk parcels plus random samples from the middle.")
 try:
-    render_ndvi_timeseries(dd["timeseries"], dd.get("timeseries_srre", dd["timeseries"]), all_parcels, dd["risks"], n_lines=n_lines)
+    render_ndvi_timeseries(
+        dd["timeseries"], dd.get("timeseries_srre", dd["timeseries"]),
+        all_parcels, dd["risks"], n_lines=n_lines,
+        wofost_results=dd.get("wofost_results"),
+        nutrient_results=dd.get("nutrient_results"),
+    )
 except Exception as e:
     st.error(f"Chart error: {e}")
 
@@ -330,7 +414,7 @@ with st.expander("📋 Full Parcel Data Table", expanded=False):
         for i, p in enumerate(all_parcels):
             r = dd["risks"][i]
             lbl, _ = risk_label(r["risk_score"])
-            rows.append({
+            row = {
                 "Parcel": p["id"], "Crop": p["crop"],
                 "Area (ha)": p["area_ha"],
                 "NDVI": r["ndvi"], "NDRE": r["ndre"],
@@ -339,7 +423,17 @@ with st.expander("📋 Full Parcel Data Table", expanded=False):
                 "Runoff": r.get("runoff_score"),
                 "Conf.": r.get("confidence"),
                 "Risk Score": r["risk_score"], "Risk Level": lbl,
-            })
+            }
+            wofost_yield = r.get("wofost_yield_kg_ha")
+            if wofost_yield is not None:
+                row["Yield (kg/ha)"] = round(wofost_yield, 0)
+                row["Total Yield (kg)"] = round(wofost_yield * p["area_ha"], 0)
+                row["Total Yield (t)"] = round(wofost_yield * p["area_ha"] / 1000, 2)
+            n_surplus = r.get("nutrient_n_surplus_kg_ha")
+            if n_surplus is not None:
+                row["N Surplus (kg/ha)"] = round(n_surplus, 0)
+                row["N Risk Level"] = r.get("nutrient_overfertilization_risk_level", "")
+            rows.append(row)
         df = pd.DataFrame(rows)
         st.dataframe(df, use_container_width=True, hide_index=True)
         st.download_button("⬇ Download CSV",
@@ -353,5 +447,8 @@ for text in [
     "🛰️ **Sentinel-2** — NDVI, NDRE & SRRE for crop health & anomaly",
     "⛰️ **EU-DTM** — Slope analysis for runoff potential",
     "🗺️ **LPIS** — Parcel registry from Swedish Board of Agriculture",
+    "🌱 **WOFOST** — Crop growth simulation for yield & N-uptake estimation",
+    "🌤️ **Open-Meteo** — Daily weather data for WOFOST forcing",
+    "🧪 **SoilGrids** — Soil properties for WOFOST parameterization",
 ]:
     st.markdown(text)

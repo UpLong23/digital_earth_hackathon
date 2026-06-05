@@ -1,4 +1,7 @@
 import statistics
+from typing import Optional
+
+import pandas as pd
 
 
 def compute_peer_baselines(parcels, ndvi_values, ndvi_std_values=None):
@@ -119,3 +122,34 @@ def risk_label(score):
     if score < 80:
         return "High", "#f97316"
     return "Critical", "#ef4444"
+
+
+def compute_combined_risk(parcel_df: pd.DataFrame,
+                          wofost_results: Optional[list] = None,
+                          nutrient_results: Optional[list] = None,
+                          use_wofost: bool = True) -> pd.DataFrame:
+    """Combine heuristic and WOFOST-informed risk into a single per-parcel result.
+
+    If WOFOST results are available and use_wofost is True, the
+    overfertilization risk score from the nutrient assessment replaces
+    the heuristic risk score. All original columns are preserved, and
+    WOFOST columns are prefixed with 'wofost_' / 'nutrient_'.
+    """
+    df = parcel_df.copy()
+
+    if use_wofost and wofost_results and nutrient_results:
+        for i, (w_r, n_r) in enumerate(zip(wofost_results, nutrient_results)):
+            if i >= len(df):
+                break
+            df.at[i, "risk_score"] = n_r.get("overfertilization_risk_score",
+                                              df.at[i, "risk_score"])
+            for key, val in w_r.items():
+                if key in ("daily",):
+                    continue
+                df.at[i, f"wofost_{key}"] = val
+            for key, val in n_r.items():
+                df.at[i, f"nutrient_{key}"] = val
+            lbl, _ = risk_label(df.at[i, "risk_score"])
+            df.at[i, "risk_level"] = lbl
+
+    return df

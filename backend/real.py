@@ -1,7 +1,8 @@
 import random
 from datetime import date, timedelta
+from typing import Optional
+
 import pandas as pd
-from config import RISK_WEIGHTS
 
 
 def _seed_for(lat, lon, start_date, end_date):
@@ -37,7 +38,105 @@ def _build_timeseries(parcels, ndvi_values, srre_values, start_date, end_date):
     return pd.DataFrame(ts_ndvi, index=idx), pd.DataFrame(ts_srre, index=idx)
 
 
-def build_real_data(conn, parcels, lat, lon, buffer_deg, start_date, end_date):
+def _run_wofost_pipeline(parcels, risk_list, lat, lon, start_date, end_date,
+                         progress_callback=None) -> tuple:
+    """Run WOFOST + nutrient pipeline for all parcels in parallel.
+
+    Returns (wofost_results_list, nutrient_results_list).
+    Each list parallels the parcels/risks lists.
+    Gracefully degrades to empty lists on failure.
+    """
+    try:
+        from backend.wofost import (CropResolver, sowing_date_for,
+                                     _prepare_wofost_bundle, run_single_wofost,
+                                     _heuristic_result)
+        from backend.weather import fetch_weather
+        from backend.soil import fetch_soil
+        from backend.nutrient import assess_overfertilization_risk
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import threading
+
+        weather_df = fetch_weather(lat, lon, start_date, end_date)
+        weather_summary = {
+            "total_rain_mm": float(weather_df["RAIN"].sum()),
+            "avg_temp": float(weather_df["TEMP"].mean()),
+        }
+        soil_data = fetch_soil(lat, lon)
+
+        bundle = _prepare_wofost_bundle(lat, lon, weather_df, soil_data)
+
+        n = len(parcels)
+        results = [None] * n
+        lock = threading.Lock()
+        done = [0]
+
+        def run_one(idx):
+            p = parcels[idx]
+            r = risk_list[idx] if idx < len(risk_list) else {}
+
+            if bundle is None:
+                from backend.wofost import CropResolver
+                resolved = CropResolver().resolve_crop(p["crop"])
+                wofost_res = _heuristic_result(
+                    p["crop"], resolved, lat, lon,
+                    start_date, end_date, soil_data, parcel_features=r,
+                )
+            else:
+                sowing = sowing_date_for(p["crop"])
+                wofost_res = run_single_wofost(
+                    p["crop"], lat, lon, start_date, end_date,
+                    bundle, parcel_features=r, sowing_date=sowing,
+                )
+
+            nutr_res = assess_overfertilization_risk(
+                parcel_row=r, wofost_result=wofost_res,
+                weather_summary=weather_summary, soil_data=soil_data,
+            )
+
+            with lock:
+                results[idx] = (wofost_res, nutr_res)
+                done[0] += 1
+                if progress_callback:
+                    pct = 0.80 + (done[0] / max(n, 1)) * 0.15
+                    progress_callback(pct, f"WOFOST: {done[0]}/{n} parcels")
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            pool.map(run_one, range(n))
+
+        wofost_results = [r[0] for r in results]
+        nutrient_results = [r[1] for r in results]
+        return wofost_results, nutrient_results
+
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        return [], []
+
+
+def _enrich_risks_with_wofost(risk_list, wofost_results, nutrient_results, parcels=None):
+    """Merge WOFOST/nutrient fields into risk dicts in-place.
+
+    Computes total_yield_kg = yield_kg_ha * area_ha for each parcel.
+    """
+    for i, (r, w, n) in enumerate(zip(risk_list, wofost_results, nutrient_results)):
+        for key, val in w.items():
+            if key in ("daily",):
+                continue
+            r[f"wofost_{key}"] = val
+        for key, val in n.items():
+            r[f"nutrient_{key}"] = val
+        # Compute total yield from area
+        area_ha = None
+        if parcels and i < len(parcels):
+            area_ha = parcels[i].get("area_ha")
+        if area_ha and w.get("yield_kg_ha"):
+            r["wofost_total_yield_kg"] = round(w["yield_kg_ha"] * area_ha, 0)
+            r["wofost_total_yield_tonnes"] = round(w["yield_kg_ha"] * area_ha / 1000, 2)
+    return risk_list
+
+
+def build_real_data(conn, parcels, lat, lon, buffer_deg, start_date, end_date,
+                    use_wofost=False):
     """Build risk data using the real connection (location-seeded synthetic).
 
     Falls back to location-seeded synthetic risk scores when satellite data
@@ -79,14 +178,25 @@ def build_real_data(conn, parcels, lat, lon, buffer_deg, start_date, end_date):
 
         ts_df, ts_srre_df = _build_timeseries(parcels, ndvi_list, srre_list, start_date, end_date)
 
-        return {
+        result = {
             "risks": risks,
             "timeseries": ts_df,
             "timeseries_srre": ts_srre_df,
             "srre": srre_list,
             "slope": slope_list,
             "ndvi_std": ndvi_std_list,
-        }, None
+        }
+
+        if use_wofost:
+            wofost_results, nutrient_results = _run_wofost_pipeline(
+                parcels, risks, lat, lon, start_date, end_date,
+            )
+            result["wofost_results"] = wofost_results
+            result["nutrient_results"] = nutrient_results
+            if wofost_results:
+                _enrich_risks_with_wofost(risks, wofost_results, nutrient_results, parcels)
+
+        return result, None
     except Exception as e:
         return None, f"Risk computation failed: {e}"
 
@@ -107,7 +217,8 @@ def _parcel_bbox(parcels):
 def build_real_data_from_satellite(conn, parcels, lat, lon,
                                     start_date, end_date,
                                     progress_callback=None,
-                                    municipality=None):
+                                    municipality=None,
+                                    use_wofost=False):
     """Build risk data using real Copernicus satellite imagery.
 
     Features extracted:
@@ -158,14 +269,28 @@ def build_real_data_from_satellite(conn, parcels, lat, lon,
 
         ts_df, ts_srre_df = _build_timeseries(parcels, ndvi_values, srre_values, start_date, end_date)
 
-        return {
+        result = {
             "risks": risks,
             "timeseries": ts_df,
             "timeseries_srre": ts_srre_df,
             "srre": srre_values,
             "slope": slope_values,
             "ndvi_std": ndvi_std_values,
-        }, None
+        }
+
+        if use_wofost:
+            if progress_callback:
+                progress_callback(0.80, "Running WOFOST simulations...")
+            wofost_results, nutrient_results = _run_wofost_pipeline(
+                parcels, risks, lat, lon, start_date, end_date,
+                progress_callback=progress_callback,
+            )
+            result["wofost_results"] = wofost_results
+            result["nutrient_results"] = nutrient_results
+            if wofost_results:
+                _enrich_risks_with_wofost(risks, wofost_results, nutrient_results, parcels)
+
+        return result, None
     except Exception as e:
         import traceback
         traceback.print_exc()

@@ -42,24 +42,48 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
         het = r.get("heterogeneity_score", 0)
         conf = r.get("confidence", 0)
 
+        wofost_fields = ""
+        yield_est = r.get("wofost_yield_kg_ha")
+        n_surplus = r.get("nutrient_n_surplus_kg_ha")
+        n_level = r.get("nutrient_overfertilization_risk_level")
+        if yield_est is not None:
+            wofost_fields += (
+                f"<b>WOFOST yield:</b> {yield_est:.0f} kg/ha<br>"
+            )
+        if n_surplus is not None:
+            wofost_fields += (
+                f"<b>N surplus:</b> {n_surplus:.0f} kg/ha"
+                f" &nbsp;|&nbsp; <b>N risk:</b> {n_level}<br>"
+            )
+        resolved_crop = r.get("wofost_resolved_crop")
+        if resolved_crop:
+            wofost_fields += (
+                f"<span style='font-size:0.8em;color:#94a3b8;'>"
+                f"WOFOST crop: {resolved_crop}</span><br>"
+            )
+
+        popup_html = (
+            f"<div style='min-width:180px;'>"
+            f"<b>Parcel:</b> {p['id']}<br>"
+            f"<b>Crop:</b> {p['crop']}<br>"
+            f"<b>Risk:</b> {r['risk_score']}/100 &mdash; {label}<br>"
+            f"<b>NDVI:</b> {r['ndvi']}<br>"
+            f"<b>NDRE:</b> {r['ndre']}<br>"
+            f"<b>Vigor Z:</b> {vigor_z:.1f} &nbsp;|&nbsp; "
+            f"<b>Heterog.:</b> {het:.0f}/100<br>"
+            f"<span style='font-size:0.8em;color:#94a3b8;'>"
+            f"Confidence: {conf:.0%}</span><br>"
+            f"{wofost_fields}"
+            f"</div>"
+        )
+
         folium.Polygon(
             locations=polygon_coords,
             color="#ffffff",
             weight=1.2,
             fill_color=color,
             fill_opacity=0.6,
-            popup=folium.Popup(
-                f"<div style='min-width:180px;'>"
-                f"<b>Parcel:</b> {p['id']}<br>"
-                f"<b>Crop:</b> {p['crop']}<br>"
-                f"<b>Risk:</b> {r['risk_score']}/100 &mdash; {label}<br>"
-                f"<b>NDVI:</b> {r['ndvi']}<br>"
-                f"<b>NDRE:</b> {r['ndre']}<br>"
-                f"<b>Vigor Z:</b> {vigor_z:.1f} &nbsp;|&nbsp; <b>Heterog.:</b> {het:.0f}/100<br>"
-                f"<span style='font-size:0.8em;color:#94a3b8;'>Confidence: {conf:.0%}</span>"
-                f"</div>",
-                max_width=300,
-            ),
+            popup=folium.Popup(popup_html, max_width=300),
         ).add_to(m)
 
     map_html = m._repr_html_()
