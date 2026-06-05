@@ -11,8 +11,8 @@ def _municipality_names():
 def render_sidebar():
     with st.sidebar:
         st.markdown(
-            "<h3 style='color:#e2e8f0;'>🌾 Gödslingskollen</h3>"
-            "<p style='color:#94a3b8;font-size:0.85rem;'>Övergödningsövervakning</p>",
+            "<h3 style='color:#1a1a1a;'>Gödslingskollen</h3>"
+            "<p style='color:rgba(0,0,0,0.55);font-size:0.85rem;'>Övergödningsövervakning</p>",
             unsafe_allow_html=True,
         )
 
@@ -34,15 +34,9 @@ def render_sidebar():
             lon_in = st.number_input("Longitude", value=DEFAULT_LON, format="%.4f",
                                      key="lon_input", disabled=not is_custom)
 
-        # today = date.today()
-        # default_start = today - timedelta(days=120)
-        # start_date = st.date_input("Start date", default_start)
-        # end_date = st.date_input("End date", today)
-        
-        
         default_start = date.strptime("2025-04-01", "%Y-%m-%d")
         default_end = date.strptime("2025-09-30", "%Y-%m-%d")
-        
+
         start_date = st.date_input("Start date", default_start)
         end_date = st.date_input("End date", default_end)
 
@@ -53,21 +47,21 @@ def render_sidebar():
         st.markdown("**Analysis Mode**")
         use_demo = st.toggle("Use demo data (synthetic)", value=True)
 
-        use_wofost = st.toggle("🧬 Enable WOFOST crop modeling", value=False,
+        use_wofost = st.toggle("Enable WOFOST crop modeling", value=False,
                                help="Simulates crop growth with WOFOST for yield and N-uptake estimates. Requires weather and soil data.")
 
         use_nutrient = False
         n_input_override = None
         sowing_override = None
         if not use_demo and use_wofost:
-            use_nutrient = st.toggle("🌿 Enable nutrient-risk modeling", value=False,
+            use_nutrient = st.toggle("Enable nutrient-risk modeling", value=False,
                                      help="Adds N-surplus and overfertilization assessment from WOFOST outputs.")
             n_input_override = st.number_input("Observed N input (kg/ha)",
                                                 value=0.0, min_value=0.0, max_value=500.0, step=5.0,
                                                 help="Optional: known N application rate. 0 = auto-estimate from crop.")
-            if st.button("🧑‍🌾 Clear N input"):
+            if st.button("Clear N input"):
                 n_input_override = None
-            with st.expander("⚙️ Advanced WOFOST settings"):
+            with st.expander("Advanced WOFOST settings"):
                 sowing_override = st.date_input(
                     "Sowing date override",
                     value=date(2025, 4, 20),
@@ -84,7 +78,7 @@ def render_sidebar():
                 auth_info = st.session_state.get("auth_info")
 
                 if not auth_info:
-                    if st.button("🔗 Connect", type="primary", use_container_width=True):
+                    if st.button("Connect", type="primary", width='stretch'):
                         from backend.sentinel import connect_ee
                         result = connect_ee()
                         if result["status"] == "ready":
@@ -98,9 +92,9 @@ def render_sidebar():
                 if auth_info:
                     if auth_info["status"] == "device_code":
                         if auth_info.get("url"):
-                            st.info("\U0001f510 Open this link in your browser to authenticate:")
+                            st.info("Open this link in your browser to authenticate:")
                             url = auth_info["url"]
-                            st.markdown(f"\U0001f449 [Click to authenticate]({url})")
+                            st.markdown(f"[Click to authenticate]({url})")
                             st.code(url, language="url")
                             st.caption(
                                 "After authenticating, come back and click **Verify** below."
@@ -110,7 +104,7 @@ def render_sidebar():
                     else:
                         st.error(auth_info["message"])
 
-                    if st.button("✅ Verify", use_container_width=True):
+                    if st.button("Verify", width='stretch'):
                         from backend.sentinel import connect_ee
                         result = connect_ee()
                         if result["status"] == "ready":
@@ -123,16 +117,16 @@ def render_sidebar():
                             st.rerun()
 
             if st.session_state.get("conn_ready"):
-                st.success("✅ Connected")
+                st.success("Connected")
                 if st.session_state.get("satellite_source"):
-                    st.caption("🛰️ Using real Copernicus satellite data")
+                    st.caption("Using real Copernicus satellite data")
                 else:
-                    if st.button("🛰️ Fetch real satellite data (~3 min)",
-                                 use_container_width=True,
+                    if st.button("Fetch real satellite data (~3 min)",
+                                 width='stretch',
                                  help="Downloads Sentinel-2 NDVI/NDRE + DEM from Copernicus"):
                         st.session_state.fetch_satellite = True
                         st.rerun()
-                if st.button("Disconnect", use_container_width=True):
+                if st.button("Disconnect", width='stretch'):
                     st.session_state.conn_ready = False
                     st.session_state.pop("conn", None)
                     st.session_state.pop("auth_info", None)
@@ -144,11 +138,11 @@ def render_sidebar():
         st.markdown("**Parcel Source**")
         from backend.lpis import is_cached
         if is_cached():
-            st.caption("🗺️ National LPIS dataset loaded")
+            st.caption("National LPIS dataset loaded")
         else:
-            st.caption("📡 Querying parcels live via WFS")
-            if st.button("⬇ Download national LPIS (~340 MB)",
-                         use_container_width=True,
+            st.caption("Querying parcels live via WFS")
+            if st.button("Download national LPIS (~340 MB)",
+                         width='stretch',
                          help="One-time download, enables instant parcel loading for all Sweden"):
                 st.session_state.download_lpis = True
                 st.rerun()
@@ -160,7 +154,7 @@ def render_sidebar():
                 st.rerun()
 
         st.caption(
-            "⚠️ LPIS shows the latest declared crop — not necessarily "
+            "LPIS shows the latest declared crop — not necessarily "
             "what was actually sown in your selected season."
         )
 
@@ -173,12 +167,12 @@ def render_sidebar():
             col.markdown(
                 f'<span style="display:inline-block;width:12px;height:12px;'
                 f'background:{c};border-radius:50%;"></span>'
-                f'<span style="color:#e2e8f0;font-size:0.8rem;"> {lbl}</span>',
+                f'<span style="color:#1a1a1a;font-size:0.8rem;"> {lbl}</span>',
                 unsafe_allow_html=True,
             )
 
         st.divider()
-        if st.button("🔄 Refresh Analysis", type="primary", use_container_width=True):
+        if st.button("Refresh Analysis", type="primary", width='stretch'):
             for k in ["demo_data", "real_data", "satellite_source"]:
                 st.session_state.pop(k, None)
             st.rerun()

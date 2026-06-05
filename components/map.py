@@ -12,9 +12,17 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
         location=[center_lat, center_lon],
         zoom_start=13,
         control_scale=True,
-        tiles="CartoDB dark_matter",
+        tiles="CartoDB positron",
         attr="CartoDB",
     )
+
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Esri",
+        name="Satellite",
+        overlay=False,
+        control=True,
+    ).add_to(m)
 
     if municipality and municipality != "Custom location":
         poly = get_municipality_polygon(municipality)
@@ -22,7 +30,7 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
             coords = [[c[1], c[0]] for c in poly.exterior.coords]
             folium.Polygon(
                 locations=coords,
-                color="#60a5fa",
+                color="#5a7d3c",
                 weight=2.5,
                 fill=False,
                 dash_array="8, 4",
@@ -58,7 +66,7 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
         resolved_crop = r.get("wofost_resolved_crop")
         if resolved_crop:
             wofost_fields += (
-                f"<span style='font-size:0.8em;color:#94a3b8;'>"
+                f"<span style='font-size:0.8em;color:#6b7280;'>"
                 f"WOFOST crop: {resolved_crop}</span><br>"
             )
 
@@ -71,7 +79,7 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
             f"<b>NDRE:</b> {r['ndre']}<br>"
             f"<b>Vigor Z:</b> {vigor_z:.1f} &nbsp;|&nbsp; "
             f"<b>Heterog.:</b> {het:.0f}/100<br>"
-            f"<span style='font-size:0.8em;color:#94a3b8;'>"
+            f"<span style='font-size:0.8em;color:#6b7280;'>"
             f"Confidence: {conf:.0%}</span><br>"
             f"{wofost_fields}"
             f"</div>"
@@ -79,12 +87,33 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
 
         folium.Polygon(
             locations=polygon_coords,
-            color="#ffffff",
+            color="#3d3229",
             weight=1.2,
             fill_color=color,
             fill_opacity=0.6,
             popup=folium.Popup(popup_html, max_width=300),
         ).add_to(m)
 
+    if municipality and municipality != "Custom location":
+        folium.LayerControl(position="topright", collapsed=False).add_to(m)
+    else:
+        folium.LayerControl(position="topright", collapsed=False).add_to(m)
+
     map_html = m._repr_html_()
-    st_html(map_html, width=None, height=500)
+
+    if municipality and municipality != "Custom location":
+        map_var = m.get_name()
+        script = f"""<script>
+{map_var}.on('baselayerchange', function(e) {{
+    {map_var}.eachLayer(function(layer) {{
+        if (layer instanceof L.Polygon && layer.options.dashArray) {{
+            layer.setStyle({{
+                color: e.name === 'Satellite' ? '#ffffff' : '#5a7d3c'
+            }});
+        }}
+    }});
+}});
+</script>"""
+        map_html = map_html.replace("</body>", script + "</body>")
+
+    st_html(map_html, width=None, height=700)

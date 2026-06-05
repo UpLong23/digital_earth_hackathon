@@ -9,31 +9,65 @@ from components.sidebar import render_sidebar
 from components.map import render_risk_map
 from components.timeseries import render_ndvi_timeseries, render_wofost_summary
 
-MAX_MAP_PARCELS = 2000                                                                                          # TODO
+MAX_MAP_PARCELS = 2000
 
-st.set_page_config(page_title="Gödslingskollen", page_icon="🌾", layout="wide")
+st.set_page_config(page_title="Gödslingskollen", page_icon="\U0001F33E", layout="wide")
 
 st.markdown("""
 <style>
-.stApp { background: #0e1117; }
-[data-testid="stHeader"] { background: linear-gradient(90deg, #0f172a, #1e3a5f); }
-h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
-p, li, .stMarkdown { color: #e2e8f0; }
-[data-testid="stSidebar"] { background: #0f172a; }
-[data-testid="stSidebar"] .stMarkdown { color: #e2e8f0; }
-.stAlert { background: #1e293b; border-left: 4px solid #22c55e; color: #e2e8f0; }
-[data-testid="stMetricValue"] { color: #e2e8f0; }
-[data-testid="stMetricLabel"] { color: #94a3b8; }
-[data-testid="stExpander"] { background: #1e293b; border: 1px solid #334155; }
-.stDataFrame { background: #1e293b; color: #e2e8f0; }
-[data-testid="stDataFrame"] td { color: #e2e8f0; }
-[data-testid="stDataFrame"] th { background: #0f172a; color: #94a3b8; }
-[data-testid="stDownloadButton"] button { background: #1e3a5f; color: #e2e8f0; border: 1px solid #334155; }
-.st-bb { background-color: #1e293b !important; }
-.st-at { background-color: #1e293b !important; }
+.stApp {
+    background: #f2efe9;
+    background-image:
+        radial-gradient(ellipse at 15% 30%, rgba(138, 154, 108, 0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 70%, rgba(165, 142, 100, 0.06) 0%, transparent 50%);
+}
+[data-testid="stHeader"] { background: linear-gradient(90deg, #5a7d3c, #8b7355); }
+h1, h2, h3, h4, h5, h6 { color: #3d3229 !important; }
+p, li, .stMarkdown { color: #4a3f35; }
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #5a7d3c, #8b7355);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+[data-testid="stSidebar"] > div:first-child {
+    padding: 1rem 0.5rem;
+}
+[data-testid="stSidebar"] .stMarkdown { color: #1a1a1a; }
+[data-testid="stSidebar"] h3 { color: #1a1a1a !important; }
+[data-testid="stSidebar"] label, [data-testid="stSidebar"] .stSelectbox label, [data-testid="stSidebar"] .stDateInput label, [data-testid="stSidebar"] .stNumberInput label { color: #1a1a1a !important; }
+[data-testid="stSidebar"] .st-b7 { color: #1a1a1a; }
+[data-testid="stSidebar"] section[data-testid="stSidebar"] hr { border-color: rgba(0,0,0,0.15); }
+[data-testid="stSidebar"] .stButton button { color: #1a1a1a; border-color: rgba(0,0,0,0.2); background: rgba(255,255,255,0.25); }
+[data-testid="stSidebar"] .stButton button:hover { border-color: rgba(0,0,0,0.4); background: rgba(255,255,255,0.4); }
+[data-testid="stSidebar"] .st-cb { color: #1a1a1a !important; }
+[data-testid="stSidebar"] div.row-widget.stRadio > div { color: #1a1a1a; }
+[data-testid="stSidebar"] p, [data-testid="stSidebar"] li { color: #1a1a1a; }
+[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"] { color: #1a1a1a; border-color: rgba(0,0,0,0.2); }
+[data-testid="stSidebar"] .st-emotion-cache-1aehpvj { color: #1a1a1a; }
+[data-testid="stSidebar"] .element-container .stCaption { color: rgba(0,0,0,0.55); }
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"] { background: rgba(255,255,255,0.3); border: 1px solid rgba(0,0,0,0.2); color: #1a1a1a; }
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"]:hover { background: rgba(255,255,255,0.45); }
+.stAlert { background: #ffffff; border-left: 4px solid #7a9d54; color: #4a3f35; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+[data-testid="stMetricValue"] { color: #3d3229; }
+[data-testid="stMetricLabel"] { color: #7a9d54; }
+[data-testid="stExpander"] { background: #ffffff; border: 1px solid #d4c9b8; border-radius: 8px; }
+.stDataFrame { background: #ffffff; color: #4a3f35; }
+[data-testid="stDataFrame"] td { color: #4a3f35; }
+[data-testid="stDataFrame"] th { background: #f0ebe3; color: #5a7d3c; }
+[data-testid="stDownloadButton"] button { background: #5a7d3c; color: #ffffff; border: none; border-radius: 6px; }
+[data-testid="stDownloadButton"] button:hover { background: #4a6b2e; color: #ffffff; }
+.st-bb { background-color: #ffffff !important; }
+.st-at { background-color: #ffffff !important; }
 [data-testid="stVerticalBlock"] > [style*="flex"] > [data-testid="stVerticalBlock"] { background: transparent; }
-div.row-widget.stRadio > div { color: #e2e8f0; }
-.st-cb { color: #e2e8f0 !important; }
+div.row-widget.stRadio > div { color: #4a3f35; }
+.st-cb { color: #4a3f35 !important; }
+.stSelectbox label, .stDateInput label, .stNumberInput label { color: #7a6b5d; }
+.stTextInput label { color: #7a6b5d; }
+[data-testid="stSidebarNav"] { background: #f2efe9; }
+section[data-testid="stSidebar"] hr { border-color: #d4c9b8; }
+.stButton button { color: #4a3f35; border-radius: 6px; border: 1px solid #d4c9b8; background: #ffffff; }
+.stButton button:hover { border-color: #7a9d54; color: #5a7d3c; }
+.element-container .stCaption { color: #7a6b5d; }
+div[data-testid="stInfo"] { background: #ffffff; border-left-color: #7a9d54; color: #4a3f35; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -44,7 +78,6 @@ lon = sidebar_filters["lon"]
 selected_muni = sidebar_filters["municipality"]
 is_muni_mode = selected_muni and selected_muni != "Custom location"
 
-# Build a hash of current query params to detect changes
 query_hash = hash((
     lat, lon, selected_muni,
     sidebar_filters["start_date"],
@@ -114,13 +147,13 @@ else:
     title = f"Overfertilization Risk Monitor ({lat:.3f}, {lon:.3f})"
 
 st.markdown(
-    f"<h1 style='display:inline;color:#e2e8f0;'>🌾 Gödslingskollen &nbsp;</h1>"
-    f"<span style='color:#94a3b8;font-size:1.1rem;'>{title}</span>",
+    f"<h1 style='display:inline;color:#3d3229;'>Gödslingskollen &nbsp;</h1>"
+    f"<span style='color:#7a6b5d;font-size:1.1rem;'>{title}</span>",
     unsafe_allow_html=True,
 )
 
 st.markdown(
-    "<p style='color:#94a3b8;font-size:0.9rem;max-width:800px;'>"
+    "<p style='color:#7a6b5d;font-size:0.9rem;max-width:800px;'>"
     "Gödslingskollen detects possible overfertilization on Swedish farmland. "
     "Each field is scored 0–100 by comparing its NDVI/NDRE against same-crop peer fields, "
     "within-field heterogeneity, and terrain runoff potential. "
@@ -136,39 +169,35 @@ if st.session_state.get("lpis_source"):
     n_fields = len(all_parcels)
     crops = set(p["crop"] for p in all_parcels if p["crop"] != "Unknown")
     loc_label = selected_muni if is_muni_mode else f"({lat:.3f}, {lon:.3f})"
-    st.caption(f"🗺️ {n_fields} real LPIS parcels ({total_area:.0f} ha, {len(crops)} crop types) — {loc_label}")
+    st.caption(f"{n_fields} real LPIS parcels ({total_area:.0f} ha, {len(crops)} crop types) — {loc_label}")
     st.info(
-        "ℹ️ **LPIS crop labels are from the latest annual declaration — they may not reflect actual sowing in your selected season.** "
-        "WOFOST simulation uses these labels; if the crop changed, predicted yield may be inaccurate.",
-        icon="📋",
+        "**LPIS crop labels** are from the latest annual declaration — they may not reflect actual sowing in your selected season. "
+        "WOFOST simulation uses these labels; if the crop changed, predicted yield may be inaccurate."
     )
 
 if use_demo:
     if "demo_data" not in st.session_state:
         st.session_state.demo_data = build_demo_data(parcels=all_parcels, lat=lat, lon=lon)
     dd = st.session_state.demo_data
-    data_source_label = "📊 Demo data (synthetic)"
+    data_source_label = "Demo data (synthetic)"
 else:
     conn = st.session_state.get("conn")
     if not conn:
         if "demo_data" not in st.session_state:
             st.session_state.demo_data = build_demo_data(parcels=all_parcels, lat=lat, lon=lon)
         dd = st.session_state.demo_data
-        data_source_label = "📊 Demo data (not connected)"
+        data_source_label = "Demo data (not connected)"
     else:
         from backend.real import build_real_data, build_real_data_from_satellite
 
-        # Handle "Fetch real satellite data" button
         if st.session_state.pop("fetch_satellite", False):
             from datetime import date as dt_date
             s_start = dt_date.fromisoformat(sidebar_filters["start_date"])
             s_end = dt_date.fromisoformat(sidebar_filters["end_date"])
             total_days = (s_end - s_start).days
             if total_days > 90:
-                # est = total_days // 3
                 st.info(
                     f"Date range is {total_days} days. "
-                    # f"Estimated fetch time is ~{est} min. "
                     "The progress bar below will show real-time status."
                 )
 
@@ -205,17 +234,17 @@ else:
                 if "demo_data" not in st.session_state:
                     st.session_state.demo_data = build_demo_data(parcels=all_parcels, lat=lat, lon=lon)
                 dd = st.session_state.demo_data
-                data_source_label = "⚠️ Demo data (fetch error)"
+                data_source_label = "Demo data (fetch error)"
             else:
                 st.session_state.real_data = real_data
                 dd = real_data
-                data_source_label = "🧪 Synthetic model (connected)"
+                data_source_label = "Synthetic model (connected)"
         else:
             dd = st.session_state.real_data
             data_source_label = (
-                "🛰️ Real Copernicus satellite data"
+                "Real Copernicus satellite data"
                 if st.session_state.get("satellite_source")
-                else "🧪 Synthetic model (connected)"
+                else "Synthetic model (connected)"
             )
 
 st.caption(data_source_label)
@@ -231,7 +260,6 @@ visible_indices = [i for i, p in enumerate(all_parcels) if p["id"] in parcel_ids
 visible_risks = [dd["risks"][i] for i in visible_indices]
 visible_parcels = [all_parcels[i] for i in visible_indices]
 
-# Limit map-rendered parcels to avoid Folium slowdown
 if len(visible_parcels) > MAX_MAP_PARCELS:
     st.warning(
         f"Showing {MAX_MAP_PARCELS} of {len(visible_parcels)} parcels on map "
@@ -248,7 +276,7 @@ else:
     map_parcels = visible_parcels
     map_risks = visible_risks
 
-st.subheader("🗺️ Risk Map")
+st.subheader("Risk Map")
 st.caption("Color-coded by overfertilization risk. Click for details.")
 try:
     render_risk_map(
@@ -261,7 +289,6 @@ except Exception as e:
 
 st.divider()
 
-# ── Summary cards row ─────────────────────────────────────────────
 try:
     scores = [r["risk_score"] for r in visible_risks]
     avg_risk = sum(scores) / len(scores)
@@ -284,10 +311,9 @@ try:
 except Exception as e:
     st.error(f"Summary error: {e}")
 
-# ── Top risks + Crop distribution side by side ────────────────────
 col_left, col_right = st.columns(2)
 with col_left:
-    st.subheader("🔴 Top 5 Highest Risk Parcels")
+    st.subheader("Top 5 Highest Risk Parcels")
     sorted_data = sorted(zip(visible_risks, visible_parcels),
                          key=lambda x: x[0]["risk_score"], reverse=True)[:5]
     for r, p in sorted_data:
@@ -300,42 +326,41 @@ with col_left:
         )
 
 with col_right:
-    st.subheader("🌾 Crop Distribution")
+    st.subheader("Crop Distribution")
     crop_counts = pd.Series([p["crop"] for p in visible_parcels]).value_counts()
     fig_crop = go.Figure(go.Bar(
         x=crop_counts.values,
         y=crop_counts.index,
         orientation="h",
-        marker_color="#60a5fa",
+        marker_color="#7a9d54",
         text=crop_counts.values,
         textposition="outside",
+        textfont={"color": "#4a3f35"},
     ))
     fig_crop.update_layout(
         height=250,
         margin={"l": 10, "r": 40, "t": 10, "b": 10},
-        paper_bgcolor="#0e1117",
-        plot_bgcolor="#0e1117",
-        font={"color": "#e2e8f0"},
-        xaxis={"title": "Parcels", "color": "#94a3b8", "gridcolor": "#334155"},
-        yaxis={"color": "#94a3b8", "gridcolor": "#334155"},
+        paper_bgcolor="#f2efe9",
+        plot_bgcolor="#f2efe9",
+        font={"color": "#4a3f35"},
+        xaxis={"title": "Parcels", "color": "#7a6b5d", "gridcolor": "#d4c9b8"},
+        yaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8"},
         hovermode="y unified",
     )
-    st.plotly_chart(fig_crop, use_container_width=True)
+    st.plotly_chart(fig_crop, width='stretch')
 
 st.divider()
-# ── WOFOST summary (if available) ──────────────────────────────────
 if dd.get("wofost_results"):
     render_wofost_summary(
         dd["wofost_results"], dd.get("nutrient_results"),
         all_parcels, dd["risks"],
     )
 
-    # ── Yield charts side by side ──────────────────────────────────
     ycol_left, ycol_right = st.columns(2)
 
     wofost_res = dd["wofost_results"]
     with ycol_left:
-        st.subheader("📊 Total Yield per Crop Type")
+        st.subheader("Total Yield per Crop Type")
         crop_yield = {}
         for p, w in zip(all_parcels, wofost_res):
             crop = p["crop"]
@@ -348,23 +373,24 @@ if dd.get("wofost_results"):
                 x=cy_df.values,
                 y=cy_df.index,
                 orientation="h",
-                marker_color="#34d399",
+                marker_color="#8cb369",
                 text=[f"{v:.0f} kg" for v in cy_df.values],
                 textposition="outside",
+                textfont={"color": "#4a3f35"},
             ))
             fig_crop_yield.update_layout(
                 height=300,
                 margin={"l": 10, "r": 40, "t": 10, "b": 10},
-                paper_bgcolor="#0e1117", plot_bgcolor="#0e1117",
-                font={"color": "#e2e8f0"},
-                xaxis={"title": "Total Yield (kg)", "color": "#94a3b8", "gridcolor": "#334155"},
-                yaxis={"color": "#94a3b8", "gridcolor": "#334155"},
+                paper_bgcolor="#f2efe9", plot_bgcolor="#f2efe9",
+                font={"color": "#4a3f35"},
+                xaxis={"title": "Total Yield (kg)", "color": "#7a6b5d", "gridcolor": "#d4c9b8"},
+                yaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8"},
                 hovermode="y unified",
             )
-            st.plotly_chart(fig_crop_yield, use_container_width=True)
+            st.plotly_chart(fig_crop_yield, width='stretch')
 
     with ycol_right:
-        st.subheader("🧺 Total Yield per Parcel")
+        st.subheader("Total Yield per Parcel")
         parcel_yield = []
         parcel_ids_list = []
         for p, w in zip(all_parcels, wofost_res):
@@ -376,25 +402,26 @@ if dd.get("wofost_results"):
             fig_parcel_yield = go.Figure(go.Bar(
                 x=parcel_ids_list,
                 y=parcel_yield,
-                marker_color="#60a5fa",
+                marker_color="#7a9d54",
                 text=[f"{v:.0f}" for v in parcel_yield],
                 textposition="outside",
+                textfont={"color": "#4a3f35"},
             ))
             fig_parcel_yield.update_layout(
                 height=300,
-                margin={"l": 10, "r": 40, "t": 10, "b": 80},
-                paper_bgcolor="#0e1117", plot_bgcolor="#0e1117",
-                font={"color": "#e2e8f0"},
-                xaxis={"color": "#94a3b8", "gridcolor": "#334155", "tickangle": -45},
-                yaxis={"title": "Total Yield (kg)", "color": "#94a3b8", "gridcolor": "#334155"},
+                margin={"l": 10, "r": 20, "t": 10, "b": 80},
+                paper_bgcolor="#f2efe9", plot_bgcolor="#f2efe9",
+                font={"color": "#4a3f35"},
+                xaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickangle": -45},
+                yaxis={"title": "Total Yield (kg)", "color": "#7a6b5d", "gridcolor": "#d4c9b8"},
                 hovermode="x",
             )
-            st.plotly_chart(fig_parcel_yield, use_container_width=True)
+            st.plotly_chart(fig_parcel_yield, width='stretch')
 
     st.divider()
 
-st.subheader("📈 NDVI & SRRE Time Series")
-st.caption("Highest-risk parcel (reddest line), lowest-risk parcel, and random samples in between.")
+st.subheader("NDVI & SRRE Time Series")
+st.caption("Highest-risk parcel, lowest-risk parcel, and random samples in between.")
 n_lines = st.slider("Parcel lines to show", 1, 10, 10,
                      help="Shows highest- and lowest-risk parcels plus random samples from the middle.")
 try:
@@ -407,7 +434,7 @@ try:
 except Exception as e:
     st.error(f"Chart error: {e}")
 
-with st.expander("📋 Full Parcel Data Table", expanded=False):
+with st.expander("Full Parcel Data Table", expanded=False):
     try:
         srre_values = dd.get("srre", [None] * len(all_parcels))
         rows = []
@@ -435,8 +462,8 @@ with st.expander("📋 Full Parcel Data Table", expanded=False):
                 row["N Risk Level"] = r.get("nutrient_overfertilization_risk_level", "")
             rows.append(row)
         df = pd.DataFrame(rows)
-        st.dataframe(df, use_container_width=True, hide_index=True)
-        st.download_button("⬇ Download CSV",
+        st.dataframe(df, width='stretch', hide_index=True)
+        st.download_button("Download CSV",
                            df.to_csv(index=False).encode("utf-8"),
                            "gödslingskollen_report.csv", "text/csv")
     except Exception as e:
@@ -444,11 +471,11 @@ with st.expander("📋 Full Parcel Data Table", expanded=False):
 
 st.divider()
 for text in [
-    "🛰️ **Sentinel-2** — NDVI, NDRE & SRRE for crop health & anomaly",
-    "⛰️ **EU-DTM** — Slope analysis for runoff potential",
-    "🗺️ **LPIS** — Parcel registry from Swedish Board of Agriculture",
-    "🌱 **WOFOST** — Crop growth simulation for yield & N-uptake estimation",
-    "🌤️ **Open-Meteo** — Daily weather data for WOFOST forcing",
-    "🧪 **SoilGrids** — Soil properties for WOFOST parameterization",
+    "**Sentinel-2** — NDVI, NDRE & SRRE for crop health & anomaly",
+    "**EU-DTM** — Slope analysis for runoff potential",
+    "**LPIS** — Parcel registry from Swedish Board of Agriculture",
+    "**WOFOST** — Crop growth simulation for yield & N-uptake estimation",
+    "**Open-Meteo** — Daily weather data for WOFOST forcing",
+    "**SoilGrids** — Soil properties for WOFOST parameterization",
 ]:
     st.markdown(text)

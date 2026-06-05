@@ -7,8 +7,8 @@ import plotly.io as pio
 pio.templates.default = "plotly_dark"
 
 COLORS = [
-    "#60a5fa", "#f472b6", "#34d399", "#fbbf24", "#a78bfa",
-    "#fb923c", "#4ade80", "#f87171", "#818cf8", "#2dd4bf",
+    "#5a7d3c", "#a67c52", "#8cb369", "#d4a373", "#7a9d54",
+    "#b8956a", "#6b8e4a", "#c49a6c", "#588157", "#9b8562",
 ]
 
 
@@ -26,11 +26,6 @@ def _selected_indices(parcels, risks, n_lines):
 
 def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks,
                            n_lines=10, wofost_results=None, nutrient_results=None):
-    """3-row time series chart (NDVI, SRRE, risk histogram).
-
-    If wofost_results/nutrient_results are provided, also renders
-    an N surplus histogram below.
-    """
     has_wofost = bool(wofost_results and nutrient_results)
     n_rows = 4 if has_wofost else 3
 
@@ -81,8 +76,8 @@ def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks,
     fig.add_trace(
         go.Histogram(
             x=scores, nbinsx=20,
-            marker_color="#60a5fa",
-            marker_line_color="#1e293b",
+            marker_color="#7a9d54",
+            marker_line_color="#ffffff",
             marker_line_width=1,
             name="Risk Score",
         ),
@@ -98,8 +93,8 @@ def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks,
             fig.add_trace(
                 go.Histogram(
                     x=n_surplus_vals, nbinsx=20,
-                    marker_color="#34d399",
-                    marker_line_color="#1e293b",
+                    marker_color="#8cb369",
+                    marker_line_color="#ffffff",
                     marker_line_width=1,
                     name="N Surplus",
                 ),
@@ -111,26 +106,25 @@ def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks,
         barmode="overlay",
         hovermode="x unified",
         margin={"l": 20, "r": 20, "t": 40, "b": 20},
-        paper_bgcolor="#0e1117",
-        plot_bgcolor="#1e293b",
-        font={"color": "#e2e8f0"},
-        legend={"font": {"color": "#e2e8f0"}},
+        paper_bgcolor="#f2efe9",
+        plot_bgcolor="#ffffff",
+        font={"color": "#4a3f35"},
+        legend={"font": {"color": "#4a3f35"}},
     )
-    fig.update_xaxes(title_text="Date", row=1, col=1, color="#94a3b8", gridcolor="#334155")
-    fig.update_yaxes(title_text="NDVI", row=1, col=1, range=[0, 1], color="#94a3b8", gridcolor="#334155")
-    fig.update_xaxes(title_text="Date", row=2, col=1, color="#94a3b8", gridcolor="#334155")
-    fig.update_yaxes(title_text="SRRE", row=2, col=1, color="#94a3b8", gridcolor="#334155")
-    fig.update_xaxes(title_text="Risk Score", row=3, col=1, color="#94a3b8", gridcolor="#334155")
-    fig.update_yaxes(title_text="Count", row=3, col=1, color="#94a3b8", gridcolor="#334155")
+    fig.update_xaxes(title_text="Date", row=1, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
+    fig.update_yaxes(title_text="NDVI", row=1, col=1, range=[0, 1], color="#7a6b5d", gridcolor="#d4c9b8")
+    fig.update_xaxes(title_text="Date", row=2, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
+    fig.update_yaxes(title_text="SRRE", row=2, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
+    fig.update_xaxes(title_text="Risk Score", row=3, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
+    fig.update_yaxes(title_text="Count", row=3, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
     if has_wofost:
-        fig.update_xaxes(title_text="N Surplus (kg/ha)", row=4, col=1, color="#94a3b8", gridcolor="#334155")
-        fig.update_yaxes(title_text="Count", row=4, col=1, color="#94a3b8", gridcolor="#334155")
+        fig.update_xaxes(title_text="N Surplus (kg/ha)", row=4, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
+        fig.update_yaxes(title_text="Count", row=4, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def render_wofost_summary(wofost_results, nutrient_results, parcels, risks):
-    """Render WOFOST summary metrics and yield vs attainable chart."""
     if not wofost_results:
         return
 
@@ -150,24 +144,23 @@ def render_wofost_summary(wofost_results, nutrient_results, parcels, risks):
     fallbacks = sum(1 for w in wofost_results if w.get("fallback_flags"))
     col4.metric("Fallback Mappings", fallbacks)
 
-    # Yield vs attainable scatter
     fig = go.Figure()
     yields_ok = [w.get("yield_kg_ha", 0) or 0 for w in wofost_results]
     fig.add_trace(go.Scatter(
         x=list(range(len(yields_ok))),
         y=yields_ok,
         mode="markers",
-        marker={"color": "#34d399", "size": 6},
+        marker={"color": "#8cb369", "size": 8},
         name="Predicted yield",
     ))
     fig.update_layout(
         height=250,
         title="Predicted Yield per Parcel (kg/ha)",
         margin={"l": 20, "r": 20, "t": 30, "b": 20},
-        paper_bgcolor="#0e1117",
-        plot_bgcolor="#1e293b",
-        font={"color": "#e2e8f0"},
-        xaxis={"color": "#94a3b8", "gridcolor": "#334155"},
-        yaxis={"color": "#94a3b8", "gridcolor": "#334155"},
+        paper_bgcolor="#f2efe9",
+        plot_bgcolor="#ffffff",
+        font={"color": "#4a3f35"},
+        xaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8"},
+        yaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8"},
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
