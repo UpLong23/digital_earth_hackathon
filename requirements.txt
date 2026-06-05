@@ -1,2 +1,20 @@
-# Project dependencies from /opt/anaconda3/envs/digital-earth
-openeo==0.50.0
+streamlit>=1.40
+folium>=0.19
+geopandas>=1.0
+pandas>=2.0
+numpy>=1.26
+plotly>=6.0
+shapely>=2.0
+rasterio>=1.4
+rioxarray>=0.20
+xarray>=2025
+openeo>=0.50
+pcse>=5.6.2
+owslib>=0.36
+requests>=2.31
+matplotlib>=3.10
+h5py>=3.16
+netcdf4>=1.7
+openpyxl>=3.1
+h5netcdf>=1.8
+pydeck>=0.9
