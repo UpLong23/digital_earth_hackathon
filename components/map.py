@@ -116,4 +116,4 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
 </script>"""
         map_html = map_html.replace("</body>", script + "</body>")
 
-    st.iframe(map_html, width=None, height=500)
+    st.iframe(map_html, width='stretch', height=500)
