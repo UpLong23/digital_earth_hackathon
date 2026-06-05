@@ -10,9 +10,21 @@ def _municipality_names():
 
 def render_sidebar():
     with st.sidebar:
+        from pathlib import Path
+        icon_path = Path(__file__).resolve().parent.parent / "assets" / "icon.png"
+        if icon_path.exists():
+            import base64
+            with open(icon_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode()
+            st.markdown(
+                f"<div style='text-align:center;margin-bottom:0.5rem;'>"
+                f"<img src='data:image/png;base64,{b64}' style='width:60px;height:60px;border-radius:50%;object-fit:cover;'>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
         st.markdown(
-            "<h3 style='color:#1a1a1a;'>Gödslingskollen</h3>"
-            "<p style='color:rgba(0,0,0,0.55);font-size:0.85rem;'>Övergödningsövervakning</p>",
+            "<h3 style='color:#1a1a1a;text-align:center;'>NitroSafe</h3>"
+            "<p style='color:rgba(0,0,0,0.55);font-size:0.85rem;text-align:center;'>Övergödningsövervakning</p>",
             unsafe_allow_html=True,
         )
 

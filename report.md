@@ -352,6 +352,88 @@ Downloads ~340 MB GeoParquet to `/tmp/godslingkollen_lpis/sweden.parquet`.
 
 ---
 
+## Satellite Raster → Parcel Vector (Zonal Statistics)
+
+Satellite imagery (Sentinel-2) is a **raster** — a grid of pixels with no knowledge of field boundaries. LPIS provides **vector polygons** — the parcel shapes. Bridging the two is the core of `compute_zonal_stats()` in `backend/satellite.py`.
+
+**Step by step**:
+
+1. **Coordinate transform**: Parcel geometry (EPSG:4326, lat/lon) is reprojected to UTM zone 33N (EPSG:32633) via `pyproj.Transformer` to match the raster's CRS.
+
+2. **Raster masking** (`rasterio.mask.mask`): For each parcel polygon, the S2 GeoTIFF is masked — all pixels whose centres fall inside the polygon are extracted. The `all_touched=True` flag includes any pixel the polygon boundary touches (preserves partial-edge fields).
+
+3. **Band extraction**: Two bands from the S2 composite:
+   - Band 1 (NDVI) — crop greenness
+   - Band 2 (NDRE) — red-edge chlorophyll
+   
+   For each band, NaN values (from cloud masking or no-data) are removed and the **mean** of valid pixels is computed. This yields `ndvi` and `ndre` per parcel.
+
+4. **Spatial variance**: The standard deviation of NDVI within the parcel mask (`ndvi_std`) is computed as the heterogeneity metric.
+
+5. **Data fraction**: `valid_pixels / total_pixels_in_mask` = `ndvi_data_frac` — this becomes the **confidence** score. A parcel with 80% cloud cover has low confidence (0.20).
+
+6. **SRRE derivation**: After zonal stats, `srre = (1 + ndre_mean) / (1 - ndre_mean)` is computed from the per-parcel NDRE mean (not per-pixel).
+
+7. **DEM slope**: The same masking process is applied to the slope raster (derived from Copernicus DEM via `np.gradient`). The mean slope per parcel drives the runoff risk component.
+
+**Diagram**:
+
+```
+                  ┌─────────────────────────────┐
+                  │  Sentinel-2 GeoTIFF          │
+                  │  (two bands: NDVI, NDRE)     │
+                  │  Cloud-masked, 20 m pixels   │
+                  └──────────┬──────────────────┘
+                             │
+                  ┌──────────▼──────────────────┐
+                  │  LPIS Parcel Polygon         │
+                  │  (EPSG:4326 → EPSG:32633)    │
+                  └──────────┬──────────────────┘
+                             │
+                  ┌──────────▼──────────────────┐
+                  │  rasterio.mask.mask()        │
+                  │  ⇒ pixel values inside       │
+                  │     polygon boundary         │
+                  └──────────┬──────────────────┘
+                             │
+             ┌───────────────┼───────────────┐
+             ▼               ▼               ▼
+     ndvi_mean         ndvi_std         ndvi_data_frac
+     ndre_mean          (heterog.)        (confidence)
+         │
+         ▼
+     srre = (1+NDRE)/(1-NDRE)
+```
+
+The result is a **flat list of dictionaries** — one per parcel — with keys `parcel_id`, `ndvi`, `ndre`, `ndvi_std`, `ndvi_data_frac`, `srre`, `slope`. This list feeds directly into `compute_risk_scores()`.
+
+Without this step, the satellite data is just a raster image. Zonal statistics is what turns pixels into per-field risk scores.
+
+## WOFOST + SoilGrids Integration
+
+SoilGrids provides **static soil properties** (clay/sand/silt fractions) which are converted to WOFOST's **soil water parameters** (SMW, SMFCF, S0) via clay-based empirical thresholds. WOFOST then uses these parameters daily in its water balance to compute water stress, which directly affects LAI expansion, photosynthesis, and final yield. The yield drives the N-uptake estimate in the nutrient assessment.
+
+The chain is:
+
+```
+SoilGrids (clay %) ──→ SMW, SMFCF, S0, AWC ──→ WOFOST water balance
+                                                      │
+                                                      ▼
+                                              Daily soil moisture
+                                              Water stress factor
+                                              ↓ LAI / photosynthesis
+                                                      │
+                                                      ▼
+                                              Simulated yield (TWSO)
+                                                      │
+                                                      ▼
+                                              N uptake = yield × N_UPTAKE_PER_TONNE
+```
+
+Without SoilGrids, WOFOST uses hard-coded conservative defaults (25% clay → AWC 0.15). With SoilGrids, each query location gets clay/sand-specific hydrology — e.g., a sandy soil near Malmö gets lower SMFCF (0.18) and wilts faster than a clay soil in Skåne (SMFCF 0.40), producing different yield and N-surplus results.
+
+---
+
 ## Future Work (from `future_work.md`)
 
 1. **Crop type detection** from Sentinel-2 NDVI time series (remove LPIS label dependency).

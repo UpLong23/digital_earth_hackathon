@@ -1,0 +1,25 @@
+flowchart TD
+    User["User Input"]
+    Parcels["Parcel Data<br/>(LPIS / Jordbruksverket)"]
+    Satellite["Satellite Imagery<br/>(Sentinel-2 via Copernicus)"]
+    RiskEngine["Risk Engine<br/>Peer comparison + heterogeneity + runoff"]
+    Wofost["Crop Growth Model<br/>(WOFOST)"]
+    Nutrient["Nutrient Assessment<br/>(N surplus)"]
+    Dashboard["Interactive Dashboard<br/>(Streamlit / Folium / Plotly)"]
+
+    User --> Parcels
+    User --> Satellite
+    Parcels --> RiskEngine
+    Satellite --> RiskEngine
+    Parcels --> Wofost
+    Wofost --> Nutrient
+    RiskEngine --> Dashboard
+    Nutrient --> Dashboard
+
+    style User fill:#5a7d3c,stroke:#3d5a28,color:#fff,stroke-width:2
+    style Parcels fill:#7a9d54,stroke:#5a7d3c,color:#fff,stroke-width:2
+    style Satellite fill:#7a9d54,stroke:#5a7d3c,color:#fff,stroke-width:2
+    style RiskEngine fill:#8b7355,stroke:#6b5535,color:#fff,stroke-width:2
+    style Wofost fill:#588157,stroke:#3a5a3a,color:#fff,stroke-width:2
+    style Nutrient fill:#588157,stroke:#3a5a3a,color:#fff,stroke-width:2
+    style Dashboard fill:#4a3f35,stroke:#2d2419,color:#fff,stroke-width:2

@@ -11,6 +11,8 @@ COLORS = [
     "#b8956a", "#6b8e4a", "#c49a6c", "#588157", "#9b8562",
 ]
 
+MOBILE_FONT = 10
+
 
 def _selected_indices(parcels, risks, n_lines):
     n_lines = max(1, min(n_lines, len(parcels)))
@@ -102,24 +104,27 @@ def render_ndvi_timeseries(timeseries_df, timeseries_srre_df, parcels, risks,
             )
 
     fig.update_layout(
-        height=700 if has_wofost else 650,
+        height=450 if has_wofost else 400,
         barmode="overlay",
         hovermode="x unified",
-        margin={"l": 20, "r": 20, "t": 40, "b": 20},
+        margin={"l": 10, "r": 10, "t": 30, "b": 10},
         paper_bgcolor="#f2efe9",
         plot_bgcolor="#ffffff",
-        font={"color": "#4a3f35"},
-        legend={"font": {"color": "#4a3f35"}},
+        font={"color": "#4a3f35", "size": MOBILE_FONT},
+        legend={"font": {"color": "#4a3f35", "size": 9}, "itemsizing": "constant"},
+        hoverlabel={"font": {"size": MOBILE_FONT}},
     )
-    fig.update_xaxes(title_text="Date", row=1, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
-    fig.update_yaxes(title_text="NDVI", row=1, col=1, range=[0, 1], color="#7a6b5d", gridcolor="#d4c9b8")
-    fig.update_xaxes(title_text="Date", row=2, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
-    fig.update_yaxes(title_text="SRRE", row=2, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
-    fig.update_xaxes(title_text="Risk Score", row=3, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
-    fig.update_yaxes(title_text="Count", row=3, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
+    fig.update_xaxes(title_text="Date", row=1, col=1, color="#7a6b5d", gridcolor="#d4c9b8", title_font={"size": MOBILE_FONT}, tickfont={"size": 9})
+    fig.update_yaxes(title_text="NDVI", row=1, col=1, range=[0, 1], color="#7a6b5d", gridcolor="#d4c9b8", title_font={"size": MOBILE_FONT}, tickfont={"size": 9})
+    fig.update_xaxes(title_text="Date", row=2, col=1, color="#7a6b5d", gridcolor="#d4c9b8", title_font={"size": MOBILE_FONT}, tickfont={"size": 9})
+    fig.update_yaxes(title_text="SRRE", row=2, col=1, color="#7a6b5d", gridcolor="#d4c9b8", title_font={"size": MOBILE_FONT}, tickfont={"size": 9})
+    fig.update_xaxes(title_text="Risk Score", row=3, col=1, color="#7a6b5d", gridcolor="#d4c9b8", title_font={"size": MOBILE_FONT}, tickfont={"size": 9})
+    fig.update_yaxes(title_text="Count", row=3, col=1, color="#7a6b5d", gridcolor="#d4c9b8", title_font={"size": MOBILE_FONT}, tickfont={"size": 9})
     if has_wofost:
-        fig.update_xaxes(title_text="N Surplus (kg/ha)", row=4, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
-        fig.update_yaxes(title_text="Count", row=4, col=1, color="#7a6b5d", gridcolor="#d4c9b8")
+        fig.update_xaxes(title_text="N Surplus (kg/ha)", row=4, col=1, color="#7a6b5d", gridcolor="#d4c9b8", title_font={"size": MOBILE_FONT}, tickfont={"size": 9})
+        fig.update_yaxes(title_text="Count", row=4, col=1, color="#7a6b5d", gridcolor="#d4c9b8", title_font={"size": MOBILE_FONT}, tickfont={"size": 9})
+    for annotation in fig['layout']['annotations']:
+        annotation['font']['size'] = 11
 
     st.plotly_chart(fig, width='stretch')
 
@@ -154,13 +159,14 @@ def render_wofost_summary(wofost_results, nutrient_results, parcels, risks):
         name="Predicted yield",
     ))
     fig.update_layout(
-        height=250,
+        height=180,
         title="Predicted Yield per Parcel (kg/ha)",
-        margin={"l": 20, "r": 20, "t": 30, "b": 20},
+        title_font={"size": 12},
+        margin={"l": 10, "r": 10, "t": 25, "b": 10},
         paper_bgcolor="#f2efe9",
         plot_bgcolor="#ffffff",
-        font={"color": "#4a3f35"},
-        xaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8"},
-        yaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8"},
+        font={"color": "#4a3f35", "size": MOBILE_FONT},
+        xaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickfont": {"size": 9}},
+        yaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickfont": {"size": 9}},
     )
     st.plotly_chart(fig, width='stretch')

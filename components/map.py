@@ -41,6 +41,7 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
             west, south, east, north = poly.bounds
             m.fit_bounds([[south, west], [north, east]])
 
+    parcel_group = folium.FeatureGroup(name="Parcels", show=True)
     for p, r in zip(parcels, risks):
         label, color = risk_label(r["risk_score"])
         coords = p["geometry"]["coordinates"][0]
@@ -92,12 +93,11 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
             fill_color=color,
             fill_opacity=0.6,
             popup=folium.Popup(popup_html, max_width=300),
-        ).add_to(m)
+        ).add_to(parcel_group)
 
-    if municipality and municipality != "Custom location":
-        folium.LayerControl(position="topright", collapsed=False).add_to(m)
-    else:
-        folium.LayerControl(position="topright", collapsed=False).add_to(m)
+    parcel_group.add_to(m)
+
+    folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
     map_html = m._repr_html_()
 
@@ -116,4 +116,4 @@ def render_risk_map(parcels, risks, center_lat=55.913, center_lon=13.107,
 </script>"""
         map_html = map_html.replace("</body>", script + "</body>")
 
-    st_html(map_html, width=None, height=700)
+    st_html(map_html, width=None, height=500)

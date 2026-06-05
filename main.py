@@ -11,7 +11,7 @@ from components.timeseries import render_ndvi_timeseries, render_wofost_summary
 
 MAX_MAP_PARCELS = 2000
 
-st.set_page_config(page_title="Gödslingskollen", page_icon="\U0001F33E", layout="wide")
+st.set_page_config(page_title="NitroSafe", page_icon="\U0001F33E", layout="wide")
 
 st.markdown("""
 <style>
@@ -68,8 +68,36 @@ section[data-testid="stSidebar"] hr { border-color: #d4c9b8; }
 .stButton button:hover { border-color: #7a9d54; color: #5a7d3c; }
 .element-container .stCaption { color: #7a6b5d; }
 div[data-testid="stInfo"] { background: #ffffff; border-left-color: #7a9d54; color: #4a3f35; }
-</style>
-""", unsafe_allow_html=True)
+
+/* Responsive map container */
+.map-container {
+    width: 100%;
+    aspect-ratio: 16/9;
+    min-height: 400px;
+    max-height: 700px;
+}
+.map-container iframe {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Mobile responsive overrides */
+@media (max-width: 768px) {
+    .map-container {
+        aspect-ratio: 4/3;
+        min-height: 300px;
+        max-height: 500px;
+    }
+    h1 { font-size: 1.4rem !important; }
+    h2 { font-size: 1.2rem !important; }
+    h3 { font-size: 1.1rem !important; }
+    [data-testid="column"] { min-width: 140px !important; }
+    [data-testid="stMetricValue"] { font-size: 1.2rem !important; }
+    [data-testid="stMetricLabel"] { font-size: 0.75rem !important; }
+    .st-emotion-cache-1d0cjqk { font-size: 0.8rem; }
+    [data-testid="stSidebar"] { width: 100% !important; }
+}
+</style>""", unsafe_allow_html=True)
 
 sidebar_filters = render_sidebar()
 
@@ -147,14 +175,14 @@ else:
     title = f"Overfertilization Risk Monitor ({lat:.3f}, {lon:.3f})"
 
 st.markdown(
-    f"<h1 style='display:inline;color:#3d3229;'>Gödslingskollen &nbsp;</h1>"
+    f"<h1 style='display:inline;color:#3d3229;'>NitroSafe &nbsp;</h1>"
     f"<span style='color:#7a6b5d;font-size:1.1rem;'>{title}</span>",
     unsafe_allow_html=True,
 )
 
 st.markdown(
     "<p style='color:#7a6b5d;font-size:0.9rem;max-width:800px;'>"
-    "Gödslingskollen detects possible overfertilization on Swedish farmland. "
+    "NitroSafe detects possible overfertilization on Swedish farmland. "
     "Each field is scored 0–100 by comparing its NDVI/NDRE against same-crop peer fields, "
     "within-field heterogeneity, and terrain runoff potential. "
     "High scores mean elevated vigor relative to peers with high within-field variability — "
@@ -338,13 +366,13 @@ with col_right:
         textfont={"color": "#4a3f35"},
     ))
     fig_crop.update_layout(
-        height=250,
+        height=180,
         margin={"l": 10, "r": 40, "t": 10, "b": 10},
         paper_bgcolor="#f2efe9",
         plot_bgcolor="#f2efe9",
-        font={"color": "#4a3f35"},
-        xaxis={"title": "Parcels", "color": "#7a6b5d", "gridcolor": "#d4c9b8"},
-        yaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8"},
+        font={"color": "#4a3f35", "size": 11},
+        xaxis={"title": "Parcels", "color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickfont": {"size": 9}},
+        yaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickfont": {"size": 9}},
         hovermode="y unified",
     )
     st.plotly_chart(fig_crop, width='stretch')
@@ -379,12 +407,12 @@ if dd.get("wofost_results"):
                 textfont={"color": "#4a3f35"},
             ))
             fig_crop_yield.update_layout(
-                height=300,
+                height=180,
                 margin={"l": 10, "r": 40, "t": 10, "b": 10},
                 paper_bgcolor="#f2efe9", plot_bgcolor="#f2efe9",
-                font={"color": "#4a3f35"},
-                xaxis={"title": "Total Yield (kg)", "color": "#7a6b5d", "gridcolor": "#d4c9b8"},
-                yaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8"},
+                font={"color": "#4a3f35", "size": 11},
+                xaxis={"title": "Total Yield (kg)", "color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickfont": {"size": 9}},
+                yaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickfont": {"size": 9}},
                 hovermode="y unified",
             )
             st.plotly_chart(fig_crop_yield, width='stretch')
@@ -408,12 +436,12 @@ if dd.get("wofost_results"):
                 textfont={"color": "#4a3f35"},
             ))
             fig_parcel_yield.update_layout(
-                height=300,
-                margin={"l": 10, "r": 20, "t": 10, "b": 80},
+                height=180,
+                margin={"l": 10, "r": 20, "t": 10, "b": 50},
                 paper_bgcolor="#f2efe9", plot_bgcolor="#f2efe9",
-                font={"color": "#4a3f35"},
-                xaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickangle": -45},
-                yaxis={"title": "Total Yield (kg)", "color": "#7a6b5d", "gridcolor": "#d4c9b8"},
+                font={"color": "#4a3f35", "size": 11},
+                xaxis={"color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickangle": -45, "tickfont": {"size": 8}},
+                yaxis={"title": "Total Yield (kg)", "color": "#7a6b5d", "gridcolor": "#d4c9b8", "tickfont": {"size": 9}},
                 hovermode="x",
             )
             st.plotly_chart(fig_parcel_yield, width='stretch')
@@ -422,7 +450,7 @@ if dd.get("wofost_results"):
 
 st.subheader("NDVI & SRRE Time Series")
 st.caption("Highest-risk parcel, lowest-risk parcel, and random samples in between.")
-n_lines = st.slider("Parcel lines to show", 1, 10, 10,
+n_lines = st.slider("Parcel lines to show", 1, 10, 5,
                      help="Shows highest- and lowest-risk parcels plus random samples from the middle.")
 try:
     render_ndvi_timeseries(
